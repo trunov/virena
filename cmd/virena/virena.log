@@ -1,0 +1,23 @@
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T20:31:56.400915+03:00","message":"Starting the Virena app server on address 'localhost:'"}
+{"level":"fatal","git_revision":"","go_version":"go1.19.5","error":"listen tcp: address localhost:localhost:: too many colons in address","time":"2023-05-25T20:31:56.401161+03:00","message":"Virena App Server Closed"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T20:34:32.760092+03:00","message":"Starting the Virena app server on address 'localhost:'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T20:35:13.786235+03:00","message":"Starting the Virena app server on address 'localhost:'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T20:35:51.314318+03:00","message":"Starting the Virena app server on address 'localhost:'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T20:37:33.032364+03:00","message":"Starting the Virena app server on address 'localhost:'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T20:37:59.356789+03:00","message":"Starting the Virena app server on address 'localhost'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T20:45:46.624789+03:00","message":"Starting the Virena app server on address 'localhost:'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T20:51:10.702741+03:00","message":"Starting the Virena app server on address 'localhost:'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T20:58:56.753941+03:00","message":"Starting the Virena app server on address 'localhost:'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T20:59:40.390778+03:00","message":"Starting the Virena app server on address 'localhost:'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T21:00:28.9909+03:00","message":"Starting the Virena app server on address 'localhost:'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T21:00:44.869173+03:00","message":"Starting the Virena app server on address 'localhost:'"}
+{"level":"fatal","git_revision":"","go_version":"go1.19.5","error":"listen tcp: address 8080: missing port in address","time":"2023-05-25T21:00:44.869306+03:00","message":"Virena App Server Closed"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T21:02:35.319304+03:00","message":"Starting the Virena app server on address 'localhost:'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T21:03:31.586333+03:00","message":"Starting the Virena app server on address 'localhost:'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T21:05:36.728501+03:00","message":"Starting the Virena app server on address 'localhost'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T21:08:15.077421+03:00","message":"Starting the Virena app server on address 'localhost'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T21:08:32.880455+03:00","message":"Starting the Virena app server on address 'localhost'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T21:09:09.771892+03:00","message":"Starting the Virena app server on address 'localhost'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T21:10:23.613108+03:00","message":"Starting the Virena app server on PORT '8080'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T21:11:55.076849+03:00","message":"Starting the Virena app server on PORT '8080'"}
+{"level":"error","git_revision":"","go_version":"go1.19.5","error":"no rows in result set","time":"2023-05-25T21:12:04.848643+03:00","message":"Get product. Something went wrong with database."}

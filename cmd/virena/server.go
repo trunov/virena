@@ -16,9 +16,9 @@ func StartServer(cfg config.Config, dbStorage postgres.DBStorager) {
 	r := handler.NewRouter(h)
 
 	l.Info().
-		Msgf("Starting the Virena app server on address '%s'", cfg.RunAddress)
+		Msgf("Starting the Virena app server on PORT '%s'", cfg.Port)
 
 	l.Fatal().
-		Err(http.ListenAndServe(cfg.RunAddress+cfg.Port, r)).
+		Err(http.ListenAndServe(":"+cfg.Port, r)).
 		Msg("Virena App Server Closed")
 }

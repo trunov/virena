@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/trunov/virena/logger"
 
@@ -20,6 +21,7 @@ func main() {
 			Msgf("Failed to read the config.")
 	}
 
+	fmt.Println(cfg)
 	dbStorage, dbpool, err := repo.CreateRepo(ctx, cfg)
 	if err != nil {
 		l.Fatal().
