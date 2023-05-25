@@ -1,2 +1,2 @@
 # virena
-virena-engine using Go, cars parts shop
+github.com/trunov/virena using Go, cars parts shop
