@@ -33,18 +33,18 @@ func (s *dbStorage) Ping(ctx context.Context) error {
 func (s *dbStorage) GetProduct(ctx context.Context, productID string) (util.GetProductResponse, error) {
 	var product util.GetProductResponse
 
-	err := s.dbpool.QueryRow(ctx, "SELECT id, code, price, description, note, weight FROM products WHERE code = $1", productID).Scan(
-		&product.ID,
-		&product.Code,
-		&product.Price,
-		&product.Description,
-		&product.Note,
-		&product.Weight,
-	)
+	// err := s.dbpool.QueryRow(ctx, "SELECT id, code, price, description, note, weight FROM products WHERE code = $1", productID).Scan(
+	// 	&product.ID,
+	// 	&product.Code,
+	// 	&product.Price,
+	// 	&product.Description,
+	// 	&product.Note,
+	// 	&product.Weight,
+	// )
 
-	if err != nil {
-		return product, err
-	}
+	// if err != nil {
+	// 	return product, err
+	// }
 
 	return product, nil
 }

@@ -5,12 +5,12 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"github.com/trunov/virena/internal/app/util"
 	"io"
 	"log"
 	"os"
-	"strconv"
 	"time"
+
+	"github.com/trunov/virena/internal/app/util"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -36,9 +36,7 @@ func (db *ProductDB) Flush(ctx context.Context) error {
 	defer tx.Rollback(ctx)
 
 	for _, p := range db.buffer {
-		if _, err := tx.Exec(ctx, "INSERT INTO products(id, code, price, description, note, weight) VALUES($1, $2, $3, $4, $5, $6)", p.ID, p.Code, p.Price, p.Description, p.Note, p.Weight); err != nil {
-			fmt.Println("hey bug is here")
-			fmt.Println(p)
+		if _, err := tx.Exec(ctx, "INSERT INTO ronax_products(code, price) VALUES($1, $2)", p.Code, p.Price); err != nil {
 			return err
 		}
 	}
@@ -58,46 +56,25 @@ func (db *ProductDB) AddProduct(ctx context.Context, p *util.GetProductResponse)
 	if cap(db.buffer) == len(db.buffer) {
 		err := db.Flush(ctx)
 		if err != nil {
+			fmt.Println("Error:", err)
 			return errors.New("cannot add records to database")
 		}
 	}
 	return nil
 }
 
-func formatProduct(p []string) util.GetProductResponse {
-	id, err := strconv.Atoi(p[0])
-	if err != nil {
-		fmt.Println("Error converting ID:", err)
-	}
-
-	price, err := strconv.ParseFloat(p[2], 64)
-	if err != nil {
-		fmt.Println("Error converting Price:", err)
-	}
-
-	var weight float64
-	if p[5] == "" {
-		weight = 0
-	} else {
-		weight, err = strconv.ParseFloat(p[5], 64)
-		if err != nil {
-			fmt.Println("Error converting Weight:", err)
-		}
-	}
-
+func formatProduct(code string, price float64) util.GetProductResponse {
 	// Create a GetProductResponse struct with the parsed values
 	return util.GetProductResponse{
-		ID:          id,
-		Code:        p[1],
-		Price:       price,
-		Description: p[3],
-		Note:        p[4],
-		Weight:      weight,
+		Code:  code,
+		Price: price,
 	}
 
 }
 
 func ProductFromCsvToDB(ctx context.Context, r *csv.Reader, db *ProductDB) error {
+	_, _ = r.Read()
+	_, _ = r.Read()
 	_, _ = r.Read()
 
 	var counter int
@@ -107,11 +84,15 @@ func ProductFromCsvToDB(ctx context.Context, r *csv.Reader, db *ProductDB) error
 		l, err := r.Read()
 		if errors.Is(err, io.EOF) {
 			break
-		} else if err != nil {
-			log.Panic(err)
 		}
 
-		v := formatProduct(l)
+		code, price, err := util.FormatCodeAndPrice(l[0]+l[1], len(l[1]))
+		if err != nil {
+			fmt.Println("Error:", err)
+			return err
+		}
+
+		v := formatProduct(code, price)
 
 		err = db.AddProduct(ctx, &v)
 		if err != nil {
@@ -138,6 +119,7 @@ func SeedTheDB(fileName string, dbpool *pgxpool.Pool, ctx context.Context) error
 	}
 
 	csvReader := csv.NewReader(file)
+	// csvReader.LazyQuotes = true
 
 	start := time.Now()
 	err = ProductFromCsvToDB(ctx, csvReader, db)
