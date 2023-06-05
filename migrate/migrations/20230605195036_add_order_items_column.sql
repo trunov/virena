@@ -3,7 +3,7 @@
 CREATE TABLE order_items (
     id SERIAL PRIMARY KEY,
     orderId INT NOT NULL,
-    productCode INT NOT NULL,
+    productCode VARCHAR(16) NOT NULL,
     amount INT NOT NULL,
     FOREIGN KEY (orderId) REFERENCES orders(id),
     FOREIGN KEY (productCode) REFERENCES products(code)
