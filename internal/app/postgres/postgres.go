@@ -20,6 +20,7 @@ type PersonalInformation struct {
 }
 
 type Product struct {
+	_        float64 `json:"amount"`
 	PartCode string  `json:"partCode"`
 	Price    float64 `json:"price"`
 	Quantity int     `json:"quantity"`
