@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE order_items (
-    id INT PRIMARY KEY AUTO_INCREMENT,
+    id SERIAL PRIMARY KEY,
     orderId INT NOT NULL,
     productCode INT NOT NULL,
     amount INT NOT NULL,
