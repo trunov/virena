@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/trunov/virena/internal/app/util"
 
@@ -20,7 +21,6 @@ type PersonalInformation struct {
 }
 
 type Product struct {
-	_        float64 `json:"amount"`
 	PartCode string  `json:"partCode"`
 	Price    float64 `json:"price"`
 	Quantity int     `json:"quantity"`
@@ -82,16 +82,18 @@ func (s *dbStorage) SaveOrder(ctx context.Context, order Order) error {
 
 	// Insert the order
 	orderID := 0
-	err = tx.QueryRow(ctx, "INSERT INTO orders (name, phone_number, company, vat_number, country, city, zip_code, address) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+	err = tx.QueryRow(ctx, "INSERT INTO orders (name, phoneNumber, company, vatNumber, country, city, zipCode, address) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
 		order.PersonalInformation.Name, order.PersonalInformation.PhoneNumber, order.PersonalInformation.Company, order.PersonalInformation.VATNumber, order.PersonalInformation.Country, order.PersonalInformation.City, order.PersonalInformation.ZipCode, order.PersonalInformation.Address).Scan(&orderID)
 	if err != nil {
 		tx.Rollback(ctx)
 		return err
 	}
 
+	fmt.Println(orderID)
+
 	for _, product := range order.Cart {
-		_, err = tx.Exec(ctx, "INSERT INTO order_items (order_id, part_code, price, quantity) VALUES ($1, $2, $3, $4)",
-			orderID, product.PartCode, product.Price, product.Quantity)
+		_, err = tx.Exec(ctx, "INSERT INTO order_items (orderId, productCode, quantity) VALUES ($1, $2, $3)",
+			orderID, product.PartCode, product.Quantity)
 		if err != nil {
 			tx.Rollback(ctx)
 			return err

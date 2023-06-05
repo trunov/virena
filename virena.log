@@ -24,3 +24,17 @@
 {"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T22:01:40.501175+03:00","message":"Starting the Virena app server on PORT '8080'"}
 {"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-05-25T22:19:47.913663+03:00","message":"Starting the Virena app server on PORT '8080'"}
 {"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-06-01T18:52:08.629356+03:00","message":"Starting the Virena app server on PORT '8080'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-06-05T22:37:34.672546+03:00","message":"Starting the Virena app server on PORT '8080'"}
+{"level":"error","git_revision":"","go_version":"go1.19.5","error":"no rows in result set","time":"2023-06-05T22:40:34.890688+03:00","message":"Get product. Something went wrong with database."}
+{"level":"error","git_revision":"","go_version":"go1.19.5","error":"no rows in result set","time":"2023-06-05T22:41:57.737937+03:00","message":"Get product. Something went wrong with database."}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-06-05T22:44:56.105515+03:00","message":"Starting the Virena app server on PORT '8080'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-06-05T22:48:34.351784+03:00","message":"Starting the Virena app server on PORT '8080'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-06-05T22:49:39.687471+03:00","message":"Starting the Virena app server on PORT '8080'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-06-05T22:50:41.528441+03:00","message":"Starting the Virena app server on PORT '8080'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-06-05T22:52:00.141412+03:00","message":"Starting the Virena app server on PORT '8080'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-06-05T22:52:36.763397+03:00","message":"Starting the Virena app server on PORT '8080'"}
+{"level":"fatal","git_revision":"","go_version":"go1.19.5","error":"ERROR 20230605195036_add_order_items_column.sql: failed to run SQL migration: failed to execute SQL query \"CREATE TABLE order_items (\\n    id SERIAL PRIMARY KEY,\\n    orderId INT NOT NULL,\\n    productCode VARCHAR(16) NOT NULL,\\n    quantity INT NOT NULL,\\n    FOREIGN KEY (orderId) REFERENCES orders(id),\\n    FOREIGN KEY (productCode) REFERENCES products(code)\\n);\": pq: relation \"order_items\" already exists","time":"2023-06-05T22:55:27.832739+03:00","message":"Error occurred while repository was initiating."}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-06-05T22:56:12.915042+03:00","message":"Starting the Virena app server on PORT '8080'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-06-05T22:57:58.610858+03:00","message":"Starting the Virena app server on PORT '8080'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-06-05T22:59:08.689808+03:00","message":"Starting the Virena app server on PORT '8080'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-06-05T22:59:28.664528+03:00","message":"Starting the Virena app server on PORT '8080'"}
