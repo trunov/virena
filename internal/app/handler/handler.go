@@ -34,6 +34,7 @@ func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request) {
 		}
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		h.logger.Err(err).Msg("Get product. Something went wrong with database.")
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -41,6 +42,28 @@ func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (h *Handler) SaveOrder(w http.ResponseWriter, r *http.Request) {
+	var order postgres.Order
+	ctx := context.Background()
+
+	err := json.NewDecoder(r.Body).Decode(&order)
+	if err != nil {
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		h.logger.Err(err).Msg("Save order. Something went wrong with decoding data.")
+		return
+	}
+
+	// would be nice to validate data
+
+	err = h.dbStorage.SaveOrder(ctx, order)
+	if err != nil {
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *Handler) PingDB(w http.ResponseWriter, r *http.Request) {
@@ -72,6 +95,7 @@ func NewRouter(h *Handler) chi.Router {
 
 	r.Get("/ping", h.PingDB)
 	r.Get("/api/product/{code}", h.GetProduct)
+	r.Post("/api/order", h.SaveOrder)
 
 	return r
 }

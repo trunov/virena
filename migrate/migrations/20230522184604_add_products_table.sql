@@ -1,7 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE products (
-    id INT,
     code VARCHAR(16) PRIMARY KEY,
     price DECIMAL(10, 2) NOT NULL,
     description VARCHAR(255) NOT NULL,

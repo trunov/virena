@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/trunov/virena/logger"
 
@@ -21,7 +20,6 @@ func main() {
 			Msgf("Failed to read the config.")
 	}
 
-	fmt.Println(cfg)
 	dbStorage, dbpool, err := repo.CreateRepo(ctx, cfg)
 	if err != nil {
 		l.Fatal().
@@ -30,7 +28,7 @@ func main() {
 	}
 	defer dbpool.Close()
 
-	// err = file.SeedTheDB("bmwoutput1.csv", dbpool, ctx)
+	// err = file.SeedTheDB("volk.csv", dbpool, ctx)
 	// if err != nil {
 	// 	l.Fatal().
 	// 		Err(err).
