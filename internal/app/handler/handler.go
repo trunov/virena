@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/sendgrid/sendgrid-go"
 	"github.com/trunov/virena/internal/app/postgres"
+	sg "github.com/trunov/virena/internal/app/sendgrid"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
@@ -14,12 +16,14 @@ import (
 )
 
 type Handler struct {
-	dbStorage postgres.DBStorager
-	logger    zerolog.Logger
+	dbStorage      postgres.DBStorager
+	logger         zerolog.Logger
+	sendGridClient *sendgrid.Client
 }
 
-func NewHandler(dbStorage postgres.DBStorager, logger zerolog.Logger) *Handler {
-	return &Handler{dbStorage: dbStorage, logger: logger}
+func NewHandler(dbStorage postgres.DBStorager, logger zerolog.Logger, sendGridAPIKey string) *Handler {
+	sendGridClient := sendgrid.NewSendClient(sendGridAPIKey)
+	return &Handler{dbStorage: dbStorage, logger: logger, sendGridClient: sendGridClient}
 }
 
 func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request) {
@@ -57,11 +61,14 @@ func (h *Handler) SaveOrder(w http.ResponseWriter, r *http.Request) {
 
 	// would be nice to validate data
 
-	err = h.dbStorage.SaveOrder(ctx, order)
+	orderID, createdDate, err := h.dbStorage.SaveOrder(ctx, order)
 	if err != nil {
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
+
+	// send sendgrid email
+	sg.SendOrderEmail(h.sendGridClient, orderID, order, createdDate)
 
 	w.WriteHeader(http.StatusOK)
 }

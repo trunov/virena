@@ -12,7 +12,7 @@ import (
 func StartServer(cfg config.Config, dbStorage postgres.DBStorager) {
 	l := logger.Get()
 
-	h := handler.NewHandler(dbStorage, l)
+	h := handler.NewHandler(dbStorage, l, cfg.SendgridAPIKey)
 	r := handler.NewRouter(h)
 
 	l.Info().

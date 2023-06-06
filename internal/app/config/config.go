@@ -7,8 +7,9 @@ import (
 )
 
 type Config struct {
-	Port        string `env:"PORT" envDefault:"8080"`
-	DatabaseURI string `env:"DATABASE_URI"`
+	Port           string `env:"PORT" envDefault:"8080"`
+	DatabaseURI    string `env:"DATABASE_URI"`
+	SendgridAPIKey string `env:"SENDGRID_API_KEY"`
 }
 
 func ReadConfig() (Config, error) {
@@ -22,6 +23,7 @@ func ReadConfig() (Config, error) {
 
 	flag.StringVar(&cfgFlag.Port, "p", cfgEnv.Port, "port")
 	flag.StringVar(&cfgFlag.DatabaseURI, "d", cfgEnv.DatabaseURI, "database URI")
+	flag.StringVar(&cfgFlag.DatabaseURI, "s", cfgEnv.SendgridAPIKey, "sendgrid API key")
 
 	flag.Parse()
 

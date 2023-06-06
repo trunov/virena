@@ -1,8 +1,10 @@
 -- +goose Up
 -- +goose StatementBegin
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE orders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
     phoneNumber VARCHAR(20) NOT NULL,
     company VARCHAR(255),
     vatNumber VARCHAR(20),
