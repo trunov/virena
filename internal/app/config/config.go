@@ -23,7 +23,7 @@ func ReadConfig() (Config, error) {
 
 	flag.StringVar(&cfgFlag.Port, "p", cfgEnv.Port, "port")
 	flag.StringVar(&cfgFlag.DatabaseURI, "d", cfgEnv.DatabaseURI, "database URI")
-	flag.StringVar(&cfgFlag.DatabaseURI, "s", cfgEnv.SendgridAPIKey, "sendgrid API key")
+	flag.StringVar(&cfgFlag.SendgridAPIKey, "s", cfgEnv.SendgridAPIKey, "sendgrid API key")
 
 	flag.Parse()
 
