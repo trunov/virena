@@ -5,12 +5,13 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"github.com/trunov/virena/internal/app/util"
 	"io"
 	"log"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/trunov/virena/internal/app/util"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -36,7 +37,7 @@ func (db *ProductDB) Flush(ctx context.Context) error {
 	defer tx.Rollback(ctx)
 
 	for _, p := range db.buffer {
-		if _, err := tx.Exec(ctx, "INSERT INTO products(id, code, price, description, note, weight) VALUES($1, $2, $3, $4, $5, $6)", p.ID, p.Code, p.Price, p.Description, p.Note, p.Weight); err != nil {
+		if _, err := tx.Exec(ctx, "INSERT INTO products(code, price, description, note, weight) VALUES($1, $2, $3, $4, $5, $6)", p.Code, p.Price, p.Description, p.Note, p.Weight); err != nil {
 			fmt.Println("hey bug is here")
 			fmt.Println(p)
 			return err
@@ -65,11 +66,6 @@ func (db *ProductDB) AddProduct(ctx context.Context, p *util.GetProductResponse)
 }
 
 func formatProduct(p []string) util.GetProductResponse {
-	id, err := strconv.Atoi(p[0])
-	if err != nil {
-		fmt.Println("Error converting ID:", err)
-	}
-
 	price, err := strconv.ParseFloat(p[2], 64)
 	if err != nil {
 		fmt.Println("Error converting Price:", err)
@@ -87,7 +83,6 @@ func formatProduct(p []string) util.GetProductResponse {
 
 	// Create a GetProductResponse struct with the parsed values
 	return util.GetProductResponse{
-		ID:          id,
 		Code:        p[1],
 		Price:       price,
 		Description: p[3],
