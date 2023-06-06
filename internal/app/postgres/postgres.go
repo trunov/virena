@@ -22,10 +22,11 @@ type PersonalInformation struct {
 }
 
 type Product struct {
-	PartCode string  `json:"partCode"`
-	Price    float64 `json:"price"`
-	Quantity int     `json:"quantity"`
-	Amount   float64 `json:"amount"`
+	PartCode    string  `json:"partCode"`
+	Price       float64 `json:"price"`
+	Quantity    int     `json:"quantity"`
+	Amount      float64 `json:"amount"`
+	Description string  `json:"description"`
 }
 
 type Order struct {

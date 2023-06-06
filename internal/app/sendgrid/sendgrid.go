@@ -12,7 +12,7 @@ import (
 func SendOrderEmail(client *sendgrid.Client, orderID string, orderData postgres.Order, createdDate time.Time) error {
 	from := mail.NewEmail("Virena", "info@virena.ee")
 	to := mail.NewEmail(orderData.PersonalInformation.Name, orderData.PersonalInformation.Email)
-	subject := orderID + ": Invoice order"
+	subject := "Invoice order"
 
 	var totalAmount float64
 	for _, product := range orderData.Cart {
