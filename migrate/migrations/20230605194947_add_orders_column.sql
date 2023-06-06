@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE orders (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     phoneNumber VARCHAR(20) NOT NULL,
     company VARCHAR(255),
@@ -9,7 +9,8 @@ CREATE TABLE orders (
     country VARCHAR(255) NOT NULL,
     city VARCHAR(255) NOT NULL,
     zipCode VARCHAR(10) NOT NULL,
-    address VARCHAR(255) NOT NULL
+    address VARCHAR(255) NOT NULL,
+    createdDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- +goose StatementEnd
 

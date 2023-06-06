@@ -38,3 +38,4 @@
 {"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-06-05T22:57:58.610858+03:00","message":"Starting the Virena app server on PORT '8080'"}
 {"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-06-05T22:59:08.689808+03:00","message":"Starting the Virena app server on PORT '8080'"}
 {"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-06-05T22:59:28.664528+03:00","message":"Starting the Virena app server on PORT '8080'"}
+{"level":"info","git_revision":"","go_version":"go1.19.5","time":"2023-06-06T14:21:06.534714+03:00","message":"Starting the Virena app server on PORT '8080'"}
