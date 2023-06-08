@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/trunov/virena/internal/app/util"
@@ -59,17 +60,30 @@ func (s *dbStorage) Ping(ctx context.Context) error {
 
 func (s *dbStorage) GetProduct(ctx context.Context, productID string) (util.GetProductResponse, error) {
 	var product util.GetProductResponse
+	var description sql.NullString
+	var note sql.NullString
+	var weight sql.NullFloat64
 
 	err := s.dbpool.QueryRow(ctx, "SELECT code, price, description, note, weight FROM products WHERE code = $1", productID).Scan(
 		&product.Code,
 		&product.Price,
-		&product.Description,
-		&product.Note,
-		&product.Weight,
+		&description,
+		&note,
+		&weight,
 	)
 
 	if err != nil {
 		return product, err
+	}
+
+	if description.Valid {
+		product.Description = &description.String
+	}
+	if note.Valid {
+		product.Note = &note.String
+	}
+	if weight.Valid {
+		product.Weight = &weight.Float64
 	}
 
 	return product, nil

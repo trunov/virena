@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE products (
-    code VARCHAR(16) PRIMARY KEY,
+    code VARCHAR(20) PRIMARY KEY,
     price DECIMAL(10, 2) NOT NULL,
     description VARCHAR(255),
     note VARCHAR(255),

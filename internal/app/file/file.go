@@ -37,9 +37,8 @@ func (db *ProductDB) Flush(ctx context.Context) error {
 	defer tx.Rollback(ctx)
 
 	for _, p := range db.buffer {
-		if _, err := tx.Exec(ctx, "INSERT INTO products(code, price, description, note, weight) VALUES($1, $2, $3, $4, $5, $6)", p.Code, p.Price, p.Description, p.Note, p.Weight); err != nil {
+		if _, err := tx.Exec(ctx, "INSERT INTO products(code, price, description, note, weight) VALUES($1, $2, $3, $4, $5)", p.Code, p.Price, p.Description, p.Note, p.Weight); err != nil {
 			fmt.Println("hey bug is here")
-			fmt.Println(p)
 			return err
 		}
 	}
@@ -71,6 +70,16 @@ func formatProduct(p []string) util.GetProductResponse {
 		fmt.Println("Error converting Price:", err)
 	}
 
+	var description *string
+	if p[3] != "" {
+		description = &p[3]
+	}
+
+	var note *string
+	if p[4] != "" {
+		note = &p[4]
+	}
+
 	var weight float64
 	if p[5] == "" {
 		weight = 0
@@ -85,11 +94,10 @@ func formatProduct(p []string) util.GetProductResponse {
 	return util.GetProductResponse{
 		Code:        p[1],
 		Price:       price,
-		Description: p[3],
-		Note:        p[4],
-		Weight:      weight,
+		Description: description,
+		Note:        note,
+		Weight:      &weight,
 	}
-
 }
 
 func ProductFromCsvToDB(ctx context.Context, r *csv.Reader, db *ProductDB) error {
@@ -108,9 +116,11 @@ func ProductFromCsvToDB(ctx context.Context, r *csv.Reader, db *ProductDB) error
 
 		v := formatProduct(l)
 
-		err = db.AddProduct(ctx, &v)
-		if err != nil {
-			return err
+		if v.Price != 0 {
+			err = db.AddProduct(ctx, &v)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
