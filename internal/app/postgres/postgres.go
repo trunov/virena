@@ -27,7 +27,7 @@ type Product struct {
 	Price       float64 `json:"price"`
 	Quantity    int     `json:"quantity"`
 	Amount      float64 `json:"amount"`
-	Description string  `json:"description"`
+	Description *string `json:"description"`
 }
 
 type Order struct {

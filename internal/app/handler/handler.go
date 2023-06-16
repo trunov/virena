@@ -68,7 +68,7 @@ func (h *Handler) SaveOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// send sendgrid email
-	sg.SendOrderEmail(h.sendGridClient, orderID, order, createdDate)
+	sg.SendOrderEmail(h.sendGridClient, orderID, order, createdDate, h.logger)
 
 	w.WriteHeader(http.StatusOK)
 }
