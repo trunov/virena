@@ -5,7 +5,8 @@ CREATE TABLE products (
     price DECIMAL(10, 2) NOT NULL,
     description VARCHAR(255),
     note VARCHAR(255),
-    weight DECIMAL(10, 2)
+    weight DECIMAL(10, 2),
+    brand VARCHAR(3)
 );
 -- +goose StatementEnd
 -- +goose Down

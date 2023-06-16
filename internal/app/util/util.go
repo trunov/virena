@@ -6,4 +6,5 @@ type GetProductResponse struct {
 	Description *string  `json:"description"`
 	Note        *string  `json:"note"`
 	Weight      *float64 `json:"weight"`
+	Brand       string   `json:"brand"`
 }

@@ -64,12 +64,13 @@ func (s *dbStorage) GetProduct(ctx context.Context, productID string) (util.GetP
 	var note sql.NullString
 	var weight sql.NullFloat64
 
-	err := s.dbpool.QueryRow(ctx, "SELECT code, price, description, note, weight FROM products WHERE code = $1", productID).Scan(
+	err := s.dbpool.QueryRow(ctx, "SELECT code, price, description, note, weight, brand FROM products WHERE code = $1", productID).Scan(
 		&product.Code,
 		&product.Price,
 		&description,
 		&note,
 		&weight,
+		&product.Brand,
 	)
 
 	if err != nil {
