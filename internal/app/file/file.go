@@ -5,25 +5,30 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"github.com/trunov/virena/internal/app/util"
 	"io"
 	"log"
+	"math"
 	"os"
-	"strconv"
+	"strings"
 	"time"
+
+	scraper "github.com/trunov/virena/internal/app/scrapper"
+	"github.com/trunov/virena/internal/app/util"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type ProductDB struct {
-	pool   *pgxpool.Pool
-	buffer []util.GetProductResponse
+	pool    *pgxpool.Pool
+	buffer  []util.GetProductResponse
+	scraper *scraper.Scraper
 }
 
-func newProductDB(filename string, dbpool *pgxpool.Pool) *ProductDB {
+func newProductDB(filename string, dbpool *pgxpool.Pool, scraper *scraper.Scraper) *ProductDB {
 	return &ProductDB{
-		pool:   dbpool,
-		buffer: make([]util.GetProductResponse, 0, 10000),
+		pool:    dbpool,
+		buffer:  make([]util.GetProductResponse, 0, 10000),
+		scraper: scraper,
 	}
 }
 
@@ -36,9 +41,7 @@ func (db *ProductDB) Flush(ctx context.Context) error {
 	defer tx.Rollback(ctx)
 
 	for _, p := range db.buffer {
-		if _, err := tx.Exec(ctx, "INSERT INTO products(id, code, price, description, note, weight) VALUES($1, $2, $3, $4, $5, $6)", p.ID, p.Code, p.Price, p.Description, p.Note, p.Weight); err != nil {
-			fmt.Println("hey bug is here")
-			fmt.Println(p)
+		if _, err := tx.Exec(ctx, "INSERT INTO originaalosad_products(code, ronaxPrice) VALUES($1, $2)", p.Code, p.RonaxPrice); err != nil {
 			return err
 		}
 	}
@@ -58,46 +61,35 @@ func (db *ProductDB) AddProduct(ctx context.Context, p *util.GetProductResponse)
 	if cap(db.buffer) == len(db.buffer) {
 		err := db.Flush(ctx)
 		if err != nil {
+			fmt.Println(err)
 			return errors.New("cannot add records to database")
 		}
 	}
 	return nil
 }
 
-func formatProduct(p []string) util.GetProductResponse {
-	id, err := strconv.Atoi(p[0])
-	if err != nil {
-		fmt.Println("Error converting ID:", err)
-	}
+func formatProduct(code string, ronaxPrice float64, scraper *scraper.Scraper) util.GetProductResponse {
+	// productURL := fmt.Sprintf("https://originaalosad.ee/zaptsasti/?s=%s", code)
+	// originaalosadPrice, err := scraper.GetOriginaalosadPriceData(productURL)
+	// if err != nil {
+	// 	fmt.Printf("Failed to fetch product data for ID %s: %v\n", code, err)
+	// 	return util.GetProductResponse{}
+	// }
 
-	price, err := strconv.ParseFloat(p[2], 64)
-	if err != nil {
-		fmt.Println("Error converting Price:", err)
-	}
-
-	var weight float64
-	if p[5] == "" {
-		weight = 0
-	} else {
-		weight, err = strconv.ParseFloat(p[5], 64)
-		if err != nil {
-			fmt.Println("Error converting Weight:", err)
-		}
-	}
+	calculatedVirenaPrice := math.Round(ronaxPrice*100) / 100
 
 	// Create a GetProductResponse struct with the parsed values
 	return util.GetProductResponse{
-		ID:          id,
-		Code:        p[1],
-		Price:       price,
-		Description: p[3],
-		Note:        p[4],
-		Weight:      weight,
+		Code:               code,
+		// OriginaalosadPrice: originaalosadPrice,
+		RonaxPrice:         calculatedVirenaPrice,
 	}
 
 }
 
 func ProductFromCsvToDB(ctx context.Context, r *csv.Reader, db *ProductDB) error {
+	_, _ = r.Read()
+	_, _ = r.Read()
 	_, _ = r.Read()
 
 	var counter int
@@ -107,11 +99,21 @@ func ProductFromCsvToDB(ctx context.Context, r *csv.Reader, db *ProductDB) error
 		l, err := r.Read()
 		if errors.Is(err, io.EOF) {
 			break
-		} else if err != nil {
-			log.Panic(err)
 		}
 
-		v := formatProduct(l)
+		// fmt.Println(l)
+
+		secondPartPrice := strings.Replace(l[1], ";", "", -1)
+
+		code, ronaxPrice, err := util.FormatCodeAndPrice(l[0]+secondPartPrice, len(secondPartPrice))
+		if err != nil {
+			fmt.Println("Error:", err)
+			return err
+		}
+
+		v := formatProduct(code, ronaxPrice, db.scraper)
+
+		// fmt.Println(v)
 
 		err = db.AddProduct(ctx, &v)
 		if err != nil {
@@ -130,7 +132,8 @@ func ProductFromCsvToDB(ctx context.Context, r *csv.Reader, db *ProductDB) error
 }
 
 func SeedTheDB(fileName string, dbpool *pgxpool.Pool, ctx context.Context) error {
-	db := newProductDB(fileName, dbpool)
+	scraper := scraper.NewScraper()
+	db := newProductDB(fileName, dbpool, scraper)
 
 	file, err := os.Open(fileName)
 	if err != nil {
@@ -138,6 +141,7 @@ func SeedTheDB(fileName string, dbpool *pgxpool.Pool, ctx context.Context) error
 	}
 
 	csvReader := csv.NewReader(file)
+	// csvReader.LazyQuotes = true
 
 	start := time.Now()
 	err = ProductFromCsvToDB(ctx, csvReader, db)

@@ -7,6 +7,7 @@ import (
 	"github.com/trunov/virena/logger"
 
 	"github.com/trunov/virena/internal/app/config"
+	"github.com/trunov/virena/internal/app/file"
 	"github.com/trunov/virena/internal/app/repo"
 )
 
@@ -30,12 +31,12 @@ func main() {
 	}
 	defer dbpool.Close()
 
-	// err = file.SeedTheDB("bmwoutput1.csv", dbpool, ctx)
-	// if err != nil {
-	// 	l.Fatal().
-	// 		Err(err).
-	// 		Msgf("Error occurred while repository was initiating.")
-	// }
+	err = file.SeedTheDB("skoda.csv", dbpool, ctx)
+	if err != nil {
+		l.Fatal().
+			Err(err).
+			Msgf("Error occurred while repository was initiating.")
+	}
 
 	StartServer(cfg, dbStorage)
 }
