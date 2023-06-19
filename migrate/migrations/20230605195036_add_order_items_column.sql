@@ -4,9 +4,9 @@ CREATE TABLE order_items (
     id SERIAL PRIMARY KEY,
     orderId UUID NOT NULL,
     productCode VARCHAR(16) NOT NULL,
+    brand VARCHAR(3) NOT NULL,
     quantity INT NOT NULL,
-    FOREIGN KEY (orderId) REFERENCES orders(id),
-    FOREIGN KEY (productCode) REFERENCES products(code)
+    FOREIGN KEY (orderId) REFERENCES orders(id)
 );
 -- +goose StatementEnd
 

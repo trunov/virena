@@ -30,6 +30,7 @@ type Product struct {
 	Quantity    int     `json:"quantity"`
 	Amount      float64 `json:"amount"`
 	Description *string `json:"description"`
+	Brand       string  `json:"brand"`
 }
 
 type Order struct {
@@ -63,7 +64,7 @@ func (s *dbStorage) Ping(ctx context.Context) error {
 func (s *dbStorage) GetProductResults(ctx context.Context, productID string) ([]util.GetProductResponse, error) {
 	var products []util.GetProductResponse
 
-	tables := []string{"products", "jaguar_products"}
+	tables := []string{"products", "jaguar_products", "ford_products"}
 
 	for _, tableName := range tables {
 		query := fmt.Sprintf("SELECT code, price, description, note, weight, brand FROM %s WHERE code = $1", tableName)
@@ -123,8 +124,8 @@ func (s *dbStorage) SaveOrder(ctx context.Context, order Order) (string, time.Ti
 	}
 
 	for _, product := range order.Cart {
-		_, err = tx.Exec(ctx, "INSERT INTO order_items (orderId, productCode, quantity) VALUES ($1, $2, $3)",
-			orderID, product.PartCode, product.Quantity)
+		_, err = tx.Exec(ctx, "INSERT INTO order_items (orderId, productCode, brand, quantity) VALUES ($1, $2, $3, $4)",
+			orderID, product.PartCode, product.Brand, product.Quantity)
 		if err != nil {
 			tx.Rollback(ctx)
 			return "", time.Time{}, err

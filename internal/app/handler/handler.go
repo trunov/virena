@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"net/http"
 
@@ -32,10 +31,6 @@ func (h *Handler) GetProductResults(w http.ResponseWriter, r *http.Request) {
 
 	products, err := h.dbStorage.GetProductResults(ctx, productID)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		h.logger.Err(err).Msg("Get product. Something went wrong with database.")
 		return
