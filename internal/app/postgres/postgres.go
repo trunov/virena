@@ -3,10 +3,12 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/trunov/virena/internal/app/util"
 
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -37,7 +39,7 @@ type Order struct {
 
 type DBStorager interface {
 	Ping(ctx context.Context) error
-	GetProduct(ctx context.Context, productID string) (util.GetProductResponse, error)
+	GetProductResults(ctx context.Context, productID string) ([]util.GetProductResponse, error)
 	SaveOrder(ctx context.Context, order Order) (string, time.Time, error)
 }
 
@@ -58,36 +60,49 @@ func (s *dbStorage) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (s *dbStorage) GetProduct(ctx context.Context, productID string) (util.GetProductResponse, error) {
-	var product util.GetProductResponse
-	var description sql.NullString
-	var note sql.NullString
-	var weight sql.NullFloat64
+func (s *dbStorage) GetProductResults(ctx context.Context, productID string) ([]util.GetProductResponse, error) {
+	var products []util.GetProductResponse
 
-	err := s.dbpool.QueryRow(ctx, "SELECT code, price, description, note, weight, brand FROM products WHERE code = $1", productID).Scan(
-		&product.Code,
-		&product.Price,
-		&description,
-		&note,
-		&weight,
-		&product.Brand,
-	)
+	tables := []string{"products", "jaguar_products"}
 
-	if err != nil {
-		return product, err
+	for _, tableName := range tables {
+		query := fmt.Sprintf("SELECT code, price, description, note, weight, brand FROM %s WHERE code = $1", tableName)
+
+		var product util.GetProductResponse
+		var description sql.NullString
+		var note sql.NullString
+		var weight sql.NullFloat64
+
+		err := s.dbpool.QueryRow(ctx, query, productID).Scan(
+			&product.Code,
+			&product.Price,
+			&description,
+			&note,
+			&weight,
+			&product.Brand,
+		)
+
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				continue
+			}
+			return products, err
+		}
+
+		if description.Valid {
+			product.Description = &description.String
+		}
+		if note.Valid {
+			product.Note = &note.String
+		}
+		if weight.Valid {
+			product.Weight = &weight.Float64
+		}
+
+		products = append(products, product)
 	}
 
-	if description.Valid {
-		product.Description = &description.String
-	}
-	if note.Valid {
-		product.Note = &note.String
-	}
-	if weight.Valid {
-		product.Weight = &weight.Float64
-	}
-
-	return product, nil
+	return products, nil
 }
 
 func (s *dbStorage) SaveOrder(ctx context.Context, order Order) (string, time.Time, error) {

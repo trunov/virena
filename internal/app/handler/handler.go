@@ -26,11 +26,11 @@ func NewHandler(dbStorage postgres.DBStorager, logger zerolog.Logger, sendGridAP
 	return &Handler{dbStorage: dbStorage, logger: logger, sendGridClient: sendGridClient}
 }
 
-func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetProductResults(w http.ResponseWriter, r *http.Request) {
 	productID := chi.URLParam(r, "code")
 	ctx := context.Background()
 
-	product, err := h.dbStorage.GetProduct(ctx, productID)
+	products, err := h.dbStorage.GetProductResults(ctx, productID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			w.WriteHeader(http.StatusNoContent)
@@ -42,7 +42,7 @@ func (h *Handler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(product); err != nil {
+	if err := json.NewEncoder(w).Encode(products); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -101,7 +101,7 @@ func NewRouter(h *Handler) chi.Router {
 	}))
 
 	r.Get("/ping", h.PingDB)
-	r.Get("/api/product/{code}", h.GetProduct)
+	r.Get("/api/product/{code}/results", h.GetProductResults)
 	r.Post("/api/order", h.SaveOrder)
 
 	return r
