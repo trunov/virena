@@ -64,7 +64,7 @@ func (s *dbStorage) Ping(ctx context.Context) error {
 func (s *dbStorage) GetProductResults(ctx context.Context, productID string) ([]util.GetProductResponse, error) {
 	var products []util.GetProductResponse
 
-	tables := []string{"products", "jaguar_products", "ford_products"}
+	tables := []string{"products", "jaguar_products", "ford_products", "volvo_products"}
 
 	for _, tableName := range tables {
 		query := fmt.Sprintf("SELECT code, price, description, note, weight, brand FROM %s WHERE code = $1", tableName)
