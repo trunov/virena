@@ -12,6 +12,8 @@ import (
 func SendOrderEmail(client *sendgrid.Client, orderID string, orderData postgres.Order, createdDate time.Time, logger zerolog.Logger) error {
 	from := mail.NewEmail("Virena", "info@virena.ee")
 	to := mail.NewEmail(orderData.PersonalInformation.Name, orderData.PersonalInformation.Email)
+	cc := mail.NewEmail("Virena", "info@virena.ee")
+
 	subject := "Invoice order"
 
 	var totalAmount float64
@@ -41,6 +43,7 @@ func SendOrderEmail(client *sendgrid.Client, orderID string, orderData postgres.
 
 	personalization := mail.NewPersonalization()
 	personalization.AddTos(to)
+	personalization.AddCCs(cc)
 	for key, value := range templateData {
 		personalization.SetDynamicTemplateData(key, value)
 	}
