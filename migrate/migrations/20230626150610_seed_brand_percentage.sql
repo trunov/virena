@@ -2,12 +2,12 @@
 -- +goose StatementBegin
 INSERT INTO brand_percentage (brand, percentage)
 VALUES
-  ('JGR', 5),
+  ('JGR', 0.5),
   ('BMW', 0),
-  ('LRR', 5),
+  ('LRR', 0.5),
   ('MB', 0),
-  ('SKD', 3),
-  ('VAG', 3),
+  ('SKD', 0.3),
+  ('VAG', 0.3),
   ('FRD', 0),
   ('VLV', 0);
 -- +goose StatementEnd
