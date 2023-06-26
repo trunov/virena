@@ -8,3 +8,5 @@ type GetProductResponse struct {
 	Weight      *float64 `json:"weight"`
 	Brand       string   `json:"brand"`
 }
+
+type BrandPercentageMap map[string]float64

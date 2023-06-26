@@ -42,6 +42,7 @@ type DBStorager interface {
 	Ping(ctx context.Context) error
 	GetProductResults(ctx context.Context, productID string) ([]util.GetProductResponse, error)
 	SaveOrder(ctx context.Context, order Order) (string, time.Time, error)
+	GetAllBrandsPercentage(ctx context.Context) (util.BrandPercentageMap, error)
 }
 
 type dbStorage struct {
@@ -59,6 +60,36 @@ func (s *dbStorage) Ping(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (s *dbStorage) GetAllBrandsPercentage(ctx context.Context) (util.BrandPercentageMap, error) {
+	query := "SELECT brand, percentage FROM brand_percentage"
+
+	rows, err := s.dbpool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+	defer rows.Close()
+
+	brandPercentageMap := make(util.BrandPercentageMap)
+
+	for rows.Next() {
+		var brand string
+		var percentage float64
+
+		err := rows.Scan(&brand, &percentage)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+
+		brandPercentageMap[brand] = percentage
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	return brandPercentageMap, nil
 }
 
 func (s *dbStorage) GetProductResults(ctx context.Context, productID string) ([]util.GetProductResponse, error) {

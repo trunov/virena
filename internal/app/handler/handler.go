@@ -29,11 +29,28 @@ func (h *Handler) GetProductResults(w http.ResponseWriter, r *http.Request) {
 	productID := chi.URLParam(r, "code")
 	ctx := context.Background()
 
+	country := r.Header.Get("X-Country")
+
 	products, err := h.dbStorage.GetProductResults(ctx, productID)
 	if err != nil {
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		h.logger.Err(err).Msg("Get product. Something went wrong with database.")
 		return
+	}
+
+	if country == "Estonia" || country == "Finland" {
+		brandPercentageMap, err := h.dbStorage.GetAllBrandsPercentage(ctx)
+		if err != nil {
+			http.Error(w, "Something went wrong", http.StatusInternalServerError)
+			h.logger.Err(err).Msg("Failed to retrieve brand percentages.")
+			return
+		}
+
+		for i := range products {
+			if percentage, ok := brandPercentageMap[products[i].Brand]; ok {
+				products[i].Price *= (1 + percentage)
+			}
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
