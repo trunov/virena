@@ -22,15 +22,18 @@ func SendOrderEmail(client *sendgrid.Client, orderID string, orderData postgres.
 		totalAmount += product.Amount
 	}
 
+	formattedTotal := fmt.Sprintf("%.2f", totalAmount)
+
 	var orderItems []map[string]interface{}
 	for _, product := range orderData.Cart {
 		price := fmt.Sprintf("%.2f", product.Price)
+		amount := fmt.Sprintf("%.2f", product.Amount)
 
 		item := map[string]interface{}{
 			"partCode":    product.PartCode,
 			"price":       price,
 			"quantity":    product.Quantity,
-			"amount":      product.Amount,
+			"amount":      amount,
 			"description": product.Description,
 		}
 		orderItems = append(orderItems, item)
@@ -41,7 +44,7 @@ func SendOrderEmail(client *sendgrid.Client, orderID string, orderData postgres.
 		"clientName":  orderData.PersonalInformation.Name,
 		"orderDate":   createdDate,
 		"orderItems":  orderItems,
-		"totalAmount": totalAmount,
+		"totalAmount": formattedTotal,
 	}
 
 	personalization := mail.NewPersonalization()
