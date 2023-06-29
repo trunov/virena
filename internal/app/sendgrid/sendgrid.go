@@ -1,6 +1,7 @@
 package sendgrid
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -23,9 +24,11 @@ func SendOrderEmail(client *sendgrid.Client, orderID string, orderData postgres.
 
 	var orderItems []map[string]interface{}
 	for _, product := range orderData.Cart {
+		price := fmt.Sprintf("%.2f", product.Price)
+
 		item := map[string]interface{}{
 			"partCode":    product.PartCode,
-			"price":       product.Price,
+			"price":       price,
 			"quantity":    product.Quantity,
 			"amount":      product.Amount,
 			"description": product.Description,
