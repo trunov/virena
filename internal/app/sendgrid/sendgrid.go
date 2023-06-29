@@ -13,7 +13,7 @@ import (
 func SendOrderEmail(client *sendgrid.Client, orderID string, orderData postgres.Order, createdDate time.Time, logger zerolog.Logger) error {
 	from := mail.NewEmail("Virena", "info@virena.ee")
 	to := mail.NewEmail(orderData.PersonalInformation.Name, orderData.PersonalInformation.Email)
-	cc := mail.NewEmail("Sendgrid", "sendgridtesting+cc@gmail.com")
+	cc := mail.NewEmail("Virena", "info@virena.ee")
 
 	subject := "Invoice order"
 
