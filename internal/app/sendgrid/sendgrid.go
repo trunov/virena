@@ -58,12 +58,10 @@ func SendOrderEmail(client *sendgrid.Client, orderID string, orderData postgres.
 		personalization.SetDynamicTemplateData(key, value)
 	}
 
-	// Create a SendGrid dynamic template email
 	message := mail.NewSingleEmail(from, subject, to, "", "")
 	message.SetTemplateID("d-6b824c66024e48acb1f0aa1fff9fd4e0")
 	message.AddPersonalizations(personalization)
 
-	// Send the email
 	_, err := client.Send(message)
 	if err != nil {
 		logger.Error().Err(err)
