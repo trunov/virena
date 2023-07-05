@@ -51,18 +51,22 @@ func SendOrderEmail(client *sendgrid.Client, orderID string, orderData postgres.
 		"totalAmount": totalAmount,
 	}
 
+	message := mail.NewV3Mail()
+	message.SetFrom(from)
+	message.Subject = subject
+
 	personalization := mail.NewPersonalization()
 	personalization.AddTos(to)
 	personalization.AddCCs(cc)
-	for key, value := range templateData {
+
+		for key, value := range templateData {
 		personalization.SetDynamicTemplateData(key, value)
 	}
 
-	message := mail.NewSingleEmail(from, subject, to, "", "")
-	message.SetTemplateID("d-6b824c66024e48acb1f0aa1fff9fd4e0")
 	message.AddPersonalizations(personalization)
+	message.SetTemplateID("d-6b824c66024e48acb1f0aa1fff9fd4e0")
 
-	_, err := client.Send(message)
+		_, err := client.Send(message)
 	if err != nil {
 		logger.Error().Err(err)
 	}
