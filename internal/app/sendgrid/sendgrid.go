@@ -17,12 +17,14 @@ func SendOrderEmail(client *sendgrid.Client, orderID string, orderData postgres.
 
 	subject := "Invoice order"
 
-	var totalAmount float64
+	var summ float64
 	for _, product := range orderData.Cart {
-		totalAmount += product.Amount
+		summ += product.Amount
 	}
 
-	formattedTotal := fmt.Sprintf("%.2f", totalAmount)
+	formattedSumm := fmt.Sprintf("%.2f", summ)
+	kabemaks := fmt.Sprintf("%.2f", summ * 0.2)
+	totalAmount := fmt.Sprintf("%.2f", summ * 1.2)
 
 	var orderItems []map[string]interface{}
 	for _, product := range orderData.Cart {
@@ -44,7 +46,9 @@ func SendOrderEmail(client *sendgrid.Client, orderID string, orderData postgres.
 		"clientName":  orderData.PersonalInformation.Name,
 		"orderDate":   createdDate,
 		"orderItems":  orderItems,
-		"totalAmount": formattedTotal,
+		"summ": formattedSumm,
+		"kabemaks": kabemaks,
+		"totalAmount": totalAmount,
 	}
 
 	personalization := mail.NewPersonalization()
