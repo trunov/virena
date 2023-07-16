@@ -41,9 +41,9 @@ type Order struct {
 type DBStorager interface {
 	Ping(ctx context.Context) error
 	GetProductResults(ctx context.Context, productID string) ([]util.GetProductResponse, error)
-	SaveOrder(ctx context.Context, order Order, orderID string) (time.Time, error)
+	SaveOrder(ctx context.Context, order Order, orderID int) (time.Time, error)
 	GetAllBrandsPercentage(ctx context.Context) (util.BrandPercentageMap, error)
-	CheckOrderIDExists(ctx context.Context, orderID string) (bool, error)
+	CheckOrderIDExists(ctx context.Context, orderID int) (bool, error)
 }
 
 type dbStorage struct {
@@ -138,7 +138,7 @@ func (s *dbStorage) GetProductResults(ctx context.Context, productID string) ([]
 	return products, nil
 }
 
-func (s *dbStorage) SaveOrder(ctx context.Context, order Order, orderID string) (time.Time, error) {
+func (s *dbStorage) SaveOrder(ctx context.Context, order Order, orderID int) (time.Time, error) {
 	// Start a transaction
 	tx, err := s.dbpool.Begin(ctx)
 	if err != nil {
@@ -173,7 +173,7 @@ func (s *dbStorage) SaveOrder(ctx context.Context, order Order, orderID string) 
 
 }
 
-func (s *dbStorage) CheckOrderIDExists(ctx context.Context, orderID string) (bool, error) {
+func (s *dbStorage) CheckOrderIDExists(ctx context.Context, orderID int) (bool, error) {
 	var exists bool
 	query := `SELECT EXISTS(SELECT 1 FROM orders WHERE id=$1)`
 	err := s.dbpool.QueryRow(ctx, query, orderID).Scan(&exists)

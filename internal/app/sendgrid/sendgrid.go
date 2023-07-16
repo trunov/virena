@@ -8,9 +8,10 @@ import (
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"github.com/trunov/virena/internal/app/postgres"
+	"github.com/trunov/virena/internal/app/util"
 )
 
-func SendOrderEmail(client *sendgrid.Client, orderID string, orderData postgres.Order, createdDate time.Time, logger zerolog.Logger) error {
+func SendOrderEmail(client *sendgrid.Client, orderID int, orderData postgres.Order, createdDate time.Time, logger zerolog.Logger) error {
 	from := mail.NewEmail("Virena", "info@virena.ee")
 	to := mail.NewEmail(orderData.PersonalInformation.Name, orderData.PersonalInformation.Email)
 	cc := mail.NewEmail("Virena", "info@virena.ee")
@@ -23,8 +24,8 @@ func SendOrderEmail(client *sendgrid.Client, orderID string, orderData postgres.
 	}
 
 	formattedSumm := fmt.Sprintf("%.2f", summ)
-	kabemaks := fmt.Sprintf("%.2f", summ * 0.2)
-	totalAmount := fmt.Sprintf("%.2f", summ * 1.2)
+	kabemaks := fmt.Sprintf("%.2f", summ*0.2)
+	totalAmount := fmt.Sprintf("%.2f", summ*1.2)
 
 	var orderItems []map[string]interface{}
 	for _, product := range orderData.Cart {
@@ -44,10 +45,10 @@ func SendOrderEmail(client *sendgrid.Client, orderID string, orderData postgres.
 	templateData := map[string]interface{}{
 		"orderNumber": orderID,
 		"clientName":  orderData.PersonalInformation.Name,
-		"orderDate":   createdDate,
+		"orderDate":   util.ConvertToGMTPlus3(createdDate),
 		"orderItems":  orderItems,
-		"summ": formattedSumm,
-		"kabemaks": kabemaks,
+		"summ":        formattedSumm,
+		"kabemaks":    kabemaks,
 		"totalAmount": totalAmount,
 	}
 
@@ -59,14 +60,14 @@ func SendOrderEmail(client *sendgrid.Client, orderID string, orderData postgres.
 	personalization.AddTos(to)
 	personalization.AddCCs(cc)
 
-		for key, value := range templateData {
+	for key, value := range templateData {
 		personalization.SetDynamicTemplateData(key, value)
 	}
 
 	message.AddPersonalizations(personalization)
 	message.SetTemplateID("d-6b824c66024e48acb1f0aa1fff9fd4e0")
 
-		_, err := client.Send(message)
+	_, err := client.Send(message)
 	if err != nil {
 		logger.Error().Err(err)
 	}

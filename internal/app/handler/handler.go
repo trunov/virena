@@ -72,7 +72,7 @@ func (h *Handler) SaveOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orderID := util.GenerateOrderID(10)
+	orderID := util.GenerateOrderID()
 	exists, err := h.dbStorage.CheckOrderIDExists(ctx, orderID)
 	if err != nil {
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
@@ -80,7 +80,7 @@ func (h *Handler) SaveOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for exists {
-		orderID = util.GenerateOrderID(10)
+		orderID = util.GenerateOrderID()
 		exists, err = h.dbStorage.CheckOrderIDExists(ctx, orderID)
 		if err != nil {
 			http.Error(w, "Something went wrong", http.StatusInternalServerError)

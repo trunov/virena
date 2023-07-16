@@ -16,19 +16,19 @@ type GetProductResponse struct {
 
 type BrandPercentageMap map[string]float64
 
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-var seededRand *rand.Rand = rand.New(
-	rand.NewSource(time.Now().UnixNano()))
-
-func StringWithCharset(length int, charset string) string {
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
-	}
-	return string(b)
+func GenerateOrderID() int {
+	rand.Seed(time.Now().UnixNano())
+	min := 10000
+	max := 99999
+	return rand.Intn(max-min+1) + min
 }
 
-func GenerateOrderID(length int) string {
-	return StringWithCharset(length, charset)
+func ConvertToGMTPlus3(createdDate time.Time) string {
+	gmtPlus3 := time.FixedZone("GMT+3", 3*60*60)
+
+	convertedDate := createdDate.In(gmtPlus3)
+
+	humanReadable := convertedDate.Format("2006-01-02 15:04:05")
+
+	return humanReadable
 }
