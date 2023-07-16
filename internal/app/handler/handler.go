@@ -8,6 +8,7 @@ import (
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/trunov/virena/internal/app/postgres"
 	sg "github.com/trunov/virena/internal/app/sendgrid"
+	"github.com/trunov/virena/internal/app/util"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
@@ -71,9 +72,23 @@ func (h *Handler) SaveOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// would be nice to validate data
+	orderID := util.GenerateOrderID(10)
+	exists, err := h.dbStorage.CheckOrderIDExists(ctx, orderID)
+	if err != nil {
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		return
+	}
 
-	orderID, createdDate, err := h.dbStorage.SaveOrder(ctx, order)
+	for exists {
+		orderID = util.GenerateOrderID(10)
+		exists, err = h.dbStorage.CheckOrderIDExists(ctx, orderID)
+		if err != nil {
+			http.Error(w, "Something went wrong", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	createdDate, err := h.dbStorage.SaveOrder(ctx, order, orderID)
 	if err != nil {
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return

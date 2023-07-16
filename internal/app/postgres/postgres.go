@@ -41,8 +41,9 @@ type Order struct {
 type DBStorager interface {
 	Ping(ctx context.Context) error
 	GetProductResults(ctx context.Context, productID string) ([]util.GetProductResponse, error)
-	SaveOrder(ctx context.Context, order Order) (string, time.Time, error)
+	SaveOrder(ctx context.Context, order Order, orderID string) (time.Time, error)
 	GetAllBrandsPercentage(ctx context.Context) (util.BrandPercentageMap, error)
+	CheckOrderIDExists(ctx context.Context, orderID string) (bool, error)
 }
 
 type dbStorage struct {
@@ -137,21 +138,20 @@ func (s *dbStorage) GetProductResults(ctx context.Context, productID string) ([]
 	return products, nil
 }
 
-func (s *dbStorage) SaveOrder(ctx context.Context, order Order) (string, time.Time, error) {
+func (s *dbStorage) SaveOrder(ctx context.Context, order Order, orderID string) (time.Time, error) {
 	// Start a transaction
 	tx, err := s.dbpool.Begin(ctx)
 	if err != nil {
-		return "", time.Time{}, err
+		return time.Time{}, err
 	}
 
 	// Insert the order
-	var orderID string
 	var createdDate time.Time
-	err = tx.QueryRow(ctx, "INSERT INTO orders (name, email, phoneNumber, company, vatNumber, country, city, zipCode, address) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, createdDate",
-		order.PersonalInformation.Name, order.PersonalInformation.Email, order.PersonalInformation.PhoneNumber, order.PersonalInformation.Company, order.PersonalInformation.VATNumber, order.PersonalInformation.Country, order.PersonalInformation.City, order.PersonalInformation.ZipCode, order.PersonalInformation.Address).Scan(&orderID, &createdDate)
+	err = tx.QueryRow(ctx, "INSERT INTO orders (name, email, phoneNumber, company, vatNumber, country, city, zipCode, address) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING createdDate",
+		order.PersonalInformation.Name, order.PersonalInformation.Email, order.PersonalInformation.PhoneNumber, order.PersonalInformation.Company, order.PersonalInformation.VATNumber, order.PersonalInformation.Country, order.PersonalInformation.City, order.PersonalInformation.ZipCode, order.PersonalInformation.Address).Scan(&createdDate)
 	if err != nil {
 		tx.Rollback(ctx)
-		return "", time.Time{}, err
+		return time.Time{}, err
 	}
 
 	for _, product := range order.Cart {
@@ -159,16 +159,26 @@ func (s *dbStorage) SaveOrder(ctx context.Context, order Order) (string, time.Ti
 			orderID, product.PartCode, product.Brand, product.Quantity)
 		if err != nil {
 			tx.Rollback(ctx)
-			return "", time.Time{}, err
+			return time.Time{}, err
 		}
 	}
 
 	// Commit the transaction
 	err = tx.Commit(ctx)
 	if err != nil {
-		return "", time.Time{}, err
+		return time.Time{}, err
 	}
 
-	return orderID, createdDate, nil
+	return createdDate, nil
 
+}
+
+func (s *dbStorage) CheckOrderIDExists(ctx context.Context, orderID string) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS(SELECT 1 FROM orders WHERE id=$1)`
+	err := s.dbpool.QueryRow(ctx, query, orderID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
 }

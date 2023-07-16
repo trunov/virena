@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 CREATE TABLE order_items (
     id SERIAL PRIMARY KEY,
-    orderId UUID NOT NULL,
+    orderId VARCHAR(10) NOT NULL,
     productCode VARCHAR(16) NOT NULL,
     brand VARCHAR(3) NOT NULL,
     quantity INT NOT NULL,
