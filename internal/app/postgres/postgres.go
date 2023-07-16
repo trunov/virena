@@ -147,7 +147,7 @@ func (s *dbStorage) SaveOrder(ctx context.Context, order Order, orderID string) 
 
 	// Insert the order
 	var createdDate time.Time
-	err = tx.QueryRow(ctx, "INSERT INTO orders (id, name, email, phoneNumber, company, vatNumber, country, city, zipCode, address) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING createdDate",
+	err = tx.QueryRow(ctx, "INSERT INTO orders (id, name, email, phoneNumber, company, vatNumber, country, city, zipCode, address) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING createdDate",
 		orderID, order.PersonalInformation.Name, order.PersonalInformation.Email, order.PersonalInformation.PhoneNumber, order.PersonalInformation.Company, order.PersonalInformation.VATNumber, order.PersonalInformation.Country, order.PersonalInformation.City, order.PersonalInformation.ZipCode, order.PersonalInformation.Address).Scan(&createdDate)
 	if err != nil {
 		tx.Rollback(ctx)
