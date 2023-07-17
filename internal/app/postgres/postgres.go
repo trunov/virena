@@ -4,9 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/trunov/virena/internal/app/util"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -95,44 +98,67 @@ func (s *dbStorage) GetAllBrandsPercentage(ctx context.Context) (util.BrandPerce
 
 func (s *dbStorage) GetProductResults(ctx context.Context, productID string) ([]util.GetProductResponse, error) {
 	var products []util.GetProductResponse
+	var mutex sync.Mutex // Mutex to prevent race condition when appending to the slice
 
 	tables := []string{"products", "jaguar_products", "ford_products", "volvo_products"}
 
+	var g errgroup.Group
+
 	for _, tableName := range tables {
-		query := fmt.Sprintf("SELECT code, price, description, note, weight, brand FROM %s WHERE code = $1", tableName)
+		tableName := tableName
 
-		var product util.GetProductResponse
-		var description sql.NullString
-		var note sql.NullString
-		var weight sql.NullFloat64
+		g.Go(func() error {
+			query := fmt.Sprintf("SELECT code, price, description, note, weight, brand FROM %s WHERE code = $1", tableName)
 
-		err := s.dbpool.QueryRow(ctx, query, productID).Scan(
-			&product.Code,
-			&product.Price,
-			&description,
-			&note,
-			&weight,
-			&product.Brand,
-		)
-
-		if err != nil {
-			if err == pgx.ErrNoRows {
-				continue
+			// if search was done with first letter 'A' we are removing it
+			searchID := productID
+			if strings.ToLower(string(productID[0])) == "a" {
+				searchID = productID[1:]
 			}
-			return products, err
-		}
 
-		if description.Valid {
-			product.Description = &description.String
-		}
-		if note.Valid {
-			product.Note = &note.String
-		}
-		if weight.Valid {
-			product.Weight = &weight.Float64
-		}
+			var product util.GetProductResponse
+			var description sql.NullString
+			var note sql.NullString
+			var weight sql.NullFloat64
 
-		products = append(products, product)
+			err := s.dbpool.QueryRow(ctx, query, searchID).Scan(
+				&product.Code,
+				&product.Price,
+				&description,
+				&note,
+				&weight,
+				&product.Brand,
+			)
+
+			if err != nil {
+				if err == pgx.ErrNoRows {
+					return nil
+				}
+				return err
+			}
+
+			if description.Valid {
+				product.Description = &description.String
+			}
+			if note.Valid {
+				product.Note = &note.String
+			}
+			if weight.Valid {
+				product.Weight = &weight.Float64
+			}
+
+			// Lock and unlock to prevent race condition
+			mutex.Lock()
+			products = append(products, product)
+			mutex.Unlock()
+
+			return nil
+		})
+	}
+
+	// Wait for all goroutines to finish and return the first non-nil error (if any)
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 
 	return products, nil
