@@ -100,7 +100,7 @@ func (s *dbStorage) GetProductResults(ctx context.Context, productID string) ([]
 	var products []util.GetProductResponse
 	var mutex sync.Mutex // Mutex to prevent race condition when appending to the slice
 
-	tables := []string{"products", "jaguar_products", "ford_products", "volvo_products"}
+	tables := []string{"products", "jaguar_products", "ford_products", "volvo_products", "toyota_products", "nissan_products", "mazda_products"}
 
 	var g errgroup.Group
 
