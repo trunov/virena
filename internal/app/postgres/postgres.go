@@ -170,5 +170,4 @@ func (s *dbStorage) SaveOrder(ctx context.Context, order Order) (string, time.Ti
 	}
 
 	return orderID, createdDate, nil
-
 }

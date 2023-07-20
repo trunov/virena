@@ -75,7 +75,7 @@ func (db *ProductDB) AddProduct(ctx context.Context, p *util.GetProductResponse)
 	return nil
 }
 
-func formatProduct(p []string) util.GetProductResponse {
+func FormatProduct(p []string) util.GetProductResponse {
 	price, err := strconv.ParseFloat(p[2], 64)
 	if err != nil {
 		fmt.Println("Error converting Price:", err)
@@ -125,7 +125,17 @@ func ProductFromCsvToDB(ctx context.Context, r *csv.Reader, db *ProductDB) error
 			log.Panic(err)
 		}
 
-		v := formatProduct(l)
+		price, err := strconv.ParseFloat(l[1], 64)
+		if err != nil {
+			fmt.Println("Error converting Price:", err)
+		}
+
+		v := util.GetProductResponse{
+			Code:  l[0],
+			Price: price,
+		}
+
+		// v := formatProduct(l)
 
 		if v.Price != 0 {
 			err = db.AddProduct(ctx, &v)
@@ -145,7 +155,7 @@ func ProductFromCsvToDB(ctx context.Context, r *csv.Reader, db *ProductDB) error
 	return nil
 }
 
-func csvToCsv(inputFile string, outputFile string, db *ProductDB, ctx context.Context) error {
+func CsvToCsv(inputFile string, outputFile string, db *ProductDB, ctx context.Context) error {
 	file, err := os.Open(inputFile)
 	if err != nil {
 		return err
@@ -207,23 +217,24 @@ func csvToCsv(inputFile string, outputFile string, db *ProductDB, ctx context.Co
 func SeedTheDB(fileName string, dbpool *pgxpool.Pool, ctx context.Context) error {
 	db := newProductDB(fileName, dbpool)
 
-	// file, err := os.Open(fileName)
-	// if err != nil {
-	// 	return err
-	// }
+	file, err := os.Open(fileName)
+	if err != nil {
+		return err
+	}
 
-	// csvReader := csv.NewReader(file)
+	csvReader := csv.NewReader(file)
+	csvReader.Comma = ';'
 
 	start := time.Now()
-	// err = ProductFromCsvToDB(ctx, csvReader, db)
-	// if err != nil {
-	// 	return err
-	// }
-
-	err := csvToCsv("vag.csv", "skodaOutput.csv", db, ctx)
+	err = ProductFromCsvToDB(ctx, csvReader, db)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	// err := csvToCsv("vag.csv", "skodaOutput.csv", db, ctx)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 	fmt.Println("Execution time for inserting videos: ", time.Since(start))
 
 	return nil

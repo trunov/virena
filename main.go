@@ -29,7 +29,7 @@ func main() {
 	}
 	defer dbpool.Close()
 
-	err = file.SeedTheDB("VAG.csv", dbpool, ctx)
+	err = file.SeedTheDB("mazda.csv", dbpool, ctx)
 	if err != nil {
 		l.Fatal().
 			Err(err).
