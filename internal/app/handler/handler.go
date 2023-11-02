@@ -100,6 +100,40 @@ func (h *Handler) SaveOrder(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (h *Handler) SendCustomerMessage(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseMultipartForm(32 << 20)
+	if err != nil {
+		http.Error(w, "Error parsing form data", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error parsing form data. File size is larger than 32MB.")
+		return
+	}
+
+	formData := make(map[string]string)
+	formData["name"] = r.FormValue("name")
+	formData["email"] = r.FormValue("email")
+	formData["subject"] = r.FormValue("subject")
+	formData["message"] = r.FormValue("message")
+
+	file, fileHeader, err := r.FormFile("fileAttachment")
+	if err != nil && err != http.ErrMissingFile {
+		http.Error(w, "Error retrieving the file", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error retrieving the file")
+		return
+	}
+	if file != nil {
+		defer file.Close()
+	}
+
+	err = sg.SendCustomerMessageEmail(h.sendGridClient, formData, fileHeader, h.logger)
+	if err != nil {
+		http.Error(w, "Error sending email", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error sending email")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func (h *Handler) PingDB(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
@@ -126,8 +160,11 @@ func NewRouter(h *Handler) chi.Router {
 	}))
 
 	r.Get("/ping", h.PingDB)
-	r.Get("/api/product/{code}/results", h.GetProductResults)
-	r.Post("/api/order", h.SaveOrder)
+	r.Route("/api", func(r chi.Router) {
+		r.Get("/product/{code}/results", h.GetProductResults)
+		r.Post("/order", h.SaveOrder)
+		r.Post("/contact", h.SendCustomerMessage)
+	})
 
 	return r
 }
