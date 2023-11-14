@@ -223,7 +223,7 @@ func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if len(record) > max(codeIndex, priceIndex) {
+		if len(record) > codeIndex && len(record) > priceIndex {
 			partCode := record[codeIndex]
 			partPrice := record[priceIndex]
 			pricesMap[partCode] = partPrice
