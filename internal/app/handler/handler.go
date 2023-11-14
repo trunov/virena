@@ -2,8 +2,13 @@ package handler
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/trunov/virena/internal/app/postgres"
@@ -134,6 +139,143 @@ func (h *Handler) SendCustomerMessage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseMultipartForm(128 << 20)
+	if err != nil {
+		http.Error(w, "Error parsing form data", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error parsing form data. File size is larger than 32MB.")
+		return
+	}
+
+	priceDelimiter := r.FormValue("priceDelimiter")
+	priceAndCodeOrder := r.FormValue("priceAndCodeOrder")
+	productDelimiter := r.FormValue("productDelimiter")
+	productOrder := r.FormValue("productOrder")
+	percentage := r.FormValue("percentage")
+
+	priceFile, _, err := r.FormFile("priceFile")
+	if err != nil {
+		http.Error(w, "Error retrieving the price file", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error retrieving the price file")
+		return
+	}
+	defer priceFile.Close()
+
+	productFile, _, err := r.FormFile("productFile")
+	if err != nil {
+		http.Error(w, "Error retrieving the product file", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error retrieving the product file")
+		return
+	}
+	defer productFile.Close()
+
+	priceReader := csv.NewReader(priceFile)
+	if priceDelimiter == ";" {
+		priceReader.Comma = ';'
+	} else {
+		priceReader.Comma = ','
+	}
+
+	priceAndCodeOrderSplit := strings.Split(priceAndCodeOrder, ",")
+	// trim for priceAndCodeOrder
+	productOrderIndex, err := strconv.Atoi(productOrder)
+	if err != nil || len(priceAndCodeOrderSplit) != 2 {
+		http.Error(w, "Invalid order values", http.StatusBadRequest)
+		h.logger.Error().Err(err).Msg("Invalid order values")
+		return
+	}
+	priceIndex, err := strconv.Atoi(priceAndCodeOrderSplit[0])
+	if err != nil {
+		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
+		h.logger.Error().Err(err).Msg("Invalid index values in order")
+		return
+	}
+
+	codeIndex, err := strconv.Atoi(priceAndCodeOrderSplit[1])
+	if err != nil {
+		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
+		h.logger.Error().Err(err).Msg("Invalid index values in order")
+		return
+	}
+
+	percentageNum, err := strconv.Atoi(percentage)
+	if err != nil {
+		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
+		h.logger.Error().Err(err).Msg("Invalid index values in order")
+		return
+	}
+
+	// Adjust indices (assuming they start from 1 in the input)
+	priceIndex--
+	codeIndex--
+	productOrderIndex--
+
+	// Creating a map for prices
+	pricesMap := make(map[string]string)
+	for {
+		record, err := priceReader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			http.Error(w, "Error reading the price file", http.StatusInternalServerError)
+			h.logger.Error().Err(err).Msg("Error reading the price file")
+			return
+		}
+
+		if len(record) > max(codeIndex, priceIndex) {
+			partCode := record[codeIndex]
+			partPrice := record[priceIndex]
+			pricesMap[partCode] = partPrice
+		}
+	}
+
+	productReader := csv.NewReader(productFile)
+	if productDelimiter == ";" {
+		productReader.Comma = ';'
+	} else {
+		productReader.Comma = ','
+	}
+
+	productRecords, err := productReader.ReadAll()
+	if err != nil {
+		http.Error(w, "Error reading the product file", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error reading the product file")
+		return
+	}
+
+	for i, record := range productRecords {
+		if i == 0 { // Skip header
+			continue
+		}
+		if replacement, ok := pricesMap[record[productOrderIndex]]; ok {
+			replacement = strings.Replace(replacement, ",", ".", -1)
+
+			price, err := strconv.ParseFloat(replacement, 64)
+			if err != nil {
+				http.Error(w, "Error reading the product file", http.StatusInternalServerError)
+				h.logger.Error().Err(err).Msg("Something went wrong while converting price to float64")
+				return
+			}
+			price *= (1 + float64(percentageNum)/100)
+
+			adjustedPriceStr := fmt.Sprintf("%.2f", price)
+
+			productRecords[i] = append(record, adjustedPriceStr)
+		}
+	}
+
+	w.Header().Set("Content-Disposition", "attachment; filename=updated_products.csv")
+	w.Header().Set("Content-Type", "text/csv")
+	csvWriter := csv.NewWriter(w)
+	err = csvWriter.WriteAll(productRecords)
+	if err != nil {
+		http.Error(w, "Error writing to output file", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error writing to output file")
+		return
+	}
+}
+
 func (h *Handler) PingDB(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
@@ -151,7 +293,7 @@ func NewRouter(h *Handler) chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://www.virena.ee"},
+		AllowedOrigins:   []string{"https://www.virena.ee", "http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Country"},
 		ExposedHeaders:   []string{"Link"},
@@ -164,6 +306,7 @@ func NewRouter(h *Handler) chi.Router {
 		r.Get("/product/{code}/results", h.GetProductResults)
 		r.Post("/order", h.SaveOrder)
 		r.Post("/contact", h.SendCustomerMessage)
+		r.Post("/handle-csv", h.ProcessCSVFiles)
 	})
 
 	return r
