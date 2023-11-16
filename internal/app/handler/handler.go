@@ -253,9 +253,8 @@ func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
 
 			price, err := strconv.ParseFloat(replacement, 64)
 			if err != nil {
-				http.Error(w, "Error reading the product file", http.StatusInternalServerError)
-				h.logger.Error().Err(err).Msg("Something went wrong while converting price to float64")
-				return
+				productRecords[i] = append(record, "")
+				continue
 			}
 			price *= (1 + float64(percentageNum)/100)
 
