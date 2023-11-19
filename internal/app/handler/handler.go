@@ -244,43 +244,38 @@ func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(productRecords) > 0 {
-		// Insert "new price" after the price column in the header
-		header := append([]string{}, productRecords[0][:priceIndex+1]...)
-		header = append(header, "new price")
-		productRecords[0] = append(header, productRecords[0][priceIndex+1:]...)
-	}
-
 	for i, record := range productRecords {
 		if i == 0 {
+			if priceIndex == len(record)-1 {
+				record = append(record, "new price")
+			} else {
+				record = append(record[:priceIndex+1], append([]string{"new price"}, record[priceIndex+1:]...)...)
+			}
+			productRecords[i] = record
 			continue
 		}
+
+		var newPriceStr string
 		if originalPrice, ok := pricesMap[record[productOrderIndex]]; ok {
-			originalPrice = strings.Replace(originalPrice, ",", ".", -1)
+			originalPrice = strings.ReplaceAll(originalPrice, " ", "")
+			originalPrice = strings.ReplaceAll(originalPrice, ",", ".")
 
-			price, err := strconv.ParseFloat(originalPrice, 64)
-			if err != nil {
-				// Append empty string for new price if there is an error
-				recordWithNewPrice := append([]string{}, record[:priceIndex+1]...)
-				recordWithNewPrice = append(recordWithNewPrice, "")
-				productRecords[i] = append(recordWithNewPrice, record[priceIndex+1:]...)
-				continue
+			if price, err := strconv.ParseFloat(originalPrice, 64); err == nil {
+				newPrice := price * (1 + float64(percentageNum)/100)
+				newPriceStr = fmt.Sprintf("%.2f", newPrice)
 			}
-
-			newPrice := price * (1 + float64(percentageNum)/100)
-
-			newPriceStr := fmt.Sprintf("%.2f", newPrice)
-
-			// Insert new price after original price
-			recordWithNewPrice := append([]string{}, record[:priceIndex+1]...)
-			recordWithNewPrice = append(recordWithNewPrice, newPriceStr)
-			productRecords[i] = append(recordWithNewPrice, record[priceIndex+1:]...)
-		} else {
-			// If no price found, append empty string for new price
-			recordWithNewPrice := append([]string{}, record[:priceIndex+1]...)
-			recordWithNewPrice = append(recordWithNewPrice, "")
-			productRecords[i] = append(recordWithNewPrice, record[priceIndex+1:]...)
 		}
+
+		if newPriceStr == "" {
+			newPriceStr = "N/A"
+		}
+
+		if priceIndex == len(record)-1 {
+			record = append(record, newPriceStr)
+		} else {
+			record = append(record[:priceIndex+1], append([]string{newPriceStr}, record[priceIndex+1:]...)...)
+		}
+		productRecords[i] = record
 	}
 
 	w.Header().Set("Content-Disposition", "attachment; filename=updated_products.csv")
