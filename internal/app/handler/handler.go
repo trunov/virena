@@ -143,7 +143,7 @@ func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(128 << 20)
 	if err != nil {
 		http.Error(w, "Error parsing form data", http.StatusInternalServerError)
-		h.logger.Error().Err(err).Msg("Error parsing form data. File size is larger than 32MB.")
+		h.logger.Error().Err(err).Msg("Error parsing form data. File size is larger than 128MB.")
 		return
 	}
 
@@ -244,23 +244,42 @@ func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(productRecords) > 0 {
+		// Insert "new price" after the price column in the header
+		header := append([]string{}, productRecords[0][:priceIndex+1]...)
+		header = append(header, "new price")
+		productRecords[0] = append(header, productRecords[0][priceIndex+1:]...)
+	}
+
 	for i, record := range productRecords {
-		if i == 0 { // Skip header
+		if i == 0 {
 			continue
 		}
-		if replacement, ok := pricesMap[record[productOrderIndex]]; ok {
-			replacement = strings.Replace(replacement, ",", ".", -1)
+		if originalPrice, ok := pricesMap[record[productOrderIndex]]; ok {
+			originalPrice = strings.Replace(originalPrice, ",", ".", -1)
 
-			price, err := strconv.ParseFloat(replacement, 64)
+			price, err := strconv.ParseFloat(originalPrice, 64)
 			if err != nil {
-				productRecords[i] = append(record, "")
+				// Append empty string for new price if there is an error
+				recordWithNewPrice := append([]string{}, record[:priceIndex+1]...)
+				recordWithNewPrice = append(recordWithNewPrice, "")
+				productRecords[i] = append(recordWithNewPrice, record[priceIndex+1:]...)
 				continue
 			}
-			price *= (1 + float64(percentageNum)/100)
 
-			adjustedPriceStr := fmt.Sprintf("%.2f", price)
+			newPrice := price * (1 + float64(percentageNum)/100)
 
-			productRecords[i] = append(record, adjustedPriceStr)
+			newPriceStr := fmt.Sprintf("%.2f", newPrice)
+
+			// Insert new price after original price
+			recordWithNewPrice := append([]string{}, record[:priceIndex+1]...)
+			recordWithNewPrice = append(recordWithNewPrice, newPriceStr)
+			productRecords[i] = append(recordWithNewPrice, record[priceIndex+1:]...)
+		} else {
+			// If no price found, append empty string for new price
+			recordWithNewPrice := append([]string{}, record[:priceIndex+1]...)
+			recordWithNewPrice = append(recordWithNewPrice, "")
+			productRecords[i] = append(recordWithNewPrice, record[priceIndex+1:]...)
 		}
 	}
 
