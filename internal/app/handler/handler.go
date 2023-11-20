@@ -198,7 +198,7 @@ func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	percentageNum, err := strconv.Atoi(percentage)
+	percentageNum, err := strconv.ParseFloat(percentage, 64)
 	if err != nil {
 		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid index values in order")
@@ -261,7 +261,7 @@ func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
 			originalPrice = strings.ReplaceAll(originalPrice, ",", ".")
 
 			if price, err := strconv.ParseFloat(originalPrice, 64); err == nil {
-				newPrice := price * (1 + float64(percentageNum)/100)
+				newPrice := price * (1 + percentageNum/100)
 				newPriceStr = fmt.Sprintf("%.2f", newPrice)
 			}
 		}
