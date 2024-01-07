@@ -262,11 +262,15 @@ func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
 
 			if price, err := strconv.ParseFloat(originalPrice, 64); err == nil {
 				newPrice := price * (1 + percentageNum/100)
-				newPriceStr = fmt.Sprintf("%.2f", newPrice)
+				if newPrice > 10 {
+					newPriceStr = fmt.Sprintf("%.2f", newPrice)
+				} else {
+					newPriceStr = fmt.Sprintf("%.3f", newPrice)
+				}
+			} else {
+				newPriceStr = "N/A"
 			}
-		}
-
-		if newPriceStr == "" {
+		} else {
 			newPriceStr = "N/A"
 		}
 
