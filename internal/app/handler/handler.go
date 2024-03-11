@@ -255,8 +255,17 @@ func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		productCode := record[productOrderIndex]
+
+		originalPrice, ok := pricesMap[productCode]
+		if !ok {
+			// Try with '0' prefix if the original product code is not found
+			prefixedProductCode := "0" + productCode
+			originalPrice, ok = pricesMap[prefixedProductCode]
+		}
+
 		var newPriceStr string
-		if originalPrice, ok := pricesMap[record[productOrderIndex]]; ok {
+		if ok {
 			originalPrice = strings.ReplaceAll(originalPrice, " ", "")
 			originalPrice = strings.ReplaceAll(originalPrice, ",", ".")
 
