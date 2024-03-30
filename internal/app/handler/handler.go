@@ -20,6 +20,11 @@ import (
 	"github.com/rs/zerolog"
 )
 
+type PriceDealerInfo struct {
+	Price  string
+	Dealer string
+}
+
 type Handler struct {
 	dbStorage      postgres.DBStorager
 	logger         zerolog.Logger
@@ -152,6 +157,20 @@ func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
 	productDelimiter := r.FormValue("productDelimiter")
 	productOrder := r.FormValue("productOrder")
 	percentage := r.FormValue("percentage")
+	// let's add column identifier which will be saved by name dealer if number is presented
+	dealerColumnStr := r.FormValue("dealerColumn")
+	dealerColumn := -1
+
+	if dealerColumnStr != "" {
+		var err error
+		dealerColumn, err = strconv.Atoi(dealerColumnStr)
+		if err != nil {
+			http.Error(w, "Invalid dealer column value", http.StatusBadRequest)
+			h.logger.Error().Err(err).Msg("Invalid dealer column value")
+			return
+		}
+		dealerColumn-- // Adjust for 0-indexing
+	}
 
 	priceFile, _, err := r.FormFile("priceFile")
 	if err != nil {
@@ -211,7 +230,7 @@ func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
 	productOrderIndex--
 
 	// Creating a map for prices
-	pricesMap := make(map[string]string)
+	pricesMap := make(map[string]PriceDealerInfo)
 	for {
 		record, err := priceReader.Read()
 		if err == io.EOF {
@@ -226,7 +245,11 @@ func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
 		if len(record) > codeIndex && len(record) > priceIndex {
 			partCode := record[codeIndex]
 			partPrice := record[priceIndex]
-			pricesMap[partCode] = partPrice
+			var dealerInfo string
+			if dealerColumn >= 0 && len(record) > dealerColumn {
+				dealerInfo = record[dealerColumn]
+			}
+			pricesMap[partCode] = PriceDealerInfo{Price: partPrice, Dealer: dealerInfo}
 		}
 	}
 
@@ -251,25 +274,30 @@ func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
 			} else {
 				record = append(record[:priceIndex+1], append([]string{"new price"}, record[priceIndex+1:]...)...)
 			}
+
+			if dealerColumn >= 0 {
+				record = append(record, "dealer")
+			}
+
 			productRecords[i] = record
 			continue
 		}
 
 		productCode := record[productOrderIndex]
 
-		originalPrice, ok := pricesMap[productCode]
+		info, ok := pricesMap[productCode]
 		if !ok {
 			// Try with '0' prefix if the original product code is not found
 			prefixedProductCode := "0" + productCode
-			originalPrice, ok = pricesMap[prefixedProductCode]
+			info, ok = pricesMap[prefixedProductCode]
 		}
 
 		var newPriceStr string
 		if ok {
-			originalPrice = strings.ReplaceAll(originalPrice, " ", "")
-			originalPrice = strings.ReplaceAll(originalPrice, ",", ".")
+			cleanedPrice := strings.ReplaceAll(info.Price, " ", "")
+			cleanedPrice = strings.ReplaceAll(cleanedPrice, ",", ".")
 
-			if price, err := strconv.ParseFloat(originalPrice, 64); err == nil {
+			if price, err := strconv.ParseFloat(cleanedPrice, 64); err == nil {
 				newPrice := price * (1 + percentageNum/100)
 				if newPrice > 10 {
 					newPriceStr = fmt.Sprintf("%.2f", newPrice)
@@ -288,6 +316,12 @@ func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
 		} else {
 			record = append(record[:priceIndex+1], append([]string{newPriceStr}, record[priceIndex+1:]...)...)
 		}
+
+		if dealerColumn >= 0 && len(record) > dealerColumn {
+			dealerInfo := info.Dealer
+			record = append(record, dealerInfo)
+		}
+
 		productRecords[i] = record
 	}
 
