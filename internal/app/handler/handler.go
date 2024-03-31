@@ -317,7 +317,7 @@ func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
 			record = append(record[:priceIndex+1], append([]string{newPriceStr}, record[priceIndex+1:]...)...)
 		}
 
-		if dealerColumn >= 0 && len(record) > dealerColumn {
+		if dealerColumn >= 0 {
 			dealerInfo := info.Dealer
 			record = append(record, dealerInfo)
 		}
