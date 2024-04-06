@@ -13,6 +13,7 @@ import (
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/trunov/virena/internal/app/postgres"
 	sg "github.com/trunov/virena/internal/app/sendgrid"
+	"github.com/trunov/virena/internal/app/services"
 	"github.com/trunov/virena/internal/app/util"
 
 	"github.com/go-chi/chi/v5"
@@ -28,12 +29,13 @@ type PriceDealerInfo struct {
 type Handler struct {
 	dbStorage      postgres.DBStorager
 	logger         zerolog.Logger
+	service        services.FileService
 	sendGridClient *sendgrid.Client
 }
 
-func NewHandler(dbStorage postgres.DBStorager, logger zerolog.Logger, sendGridAPIKey string) *Handler {
+func NewHandler(dbStorage postgres.DBStorager, service services.FileService, logger zerolog.Logger, sendGridAPIKey string) *Handler {
 	sendGridClient := sendgrid.NewSendClient(sendGridAPIKey)
-	return &Handler{dbStorage: dbStorage, logger: logger, sendGridClient: sendGridClient}
+	return &Handler{dbStorage: dbStorage, service: service, logger: logger, sendGridClient: sendGridClient}
 }
 
 func (h *Handler) GetProductResults(w http.ResponseWriter, r *http.Request) {
@@ -144,7 +146,7 @@ func (h *Handler) SendCustomerMessage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(128 << 20)
 	if err != nil {
 		http.Error(w, "Error parsing form data", http.StatusInternalServerError)
@@ -336,6 +338,150 @@ func (h *Handler) ProcessCSVFiles(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+
+	err := r.ParseMultipartForm(128 << 20)
+	if err != nil {
+		http.Error(w, "Error parsing form data", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error parsing form data. File size is larger than 128MB.")
+		return
+	}
+
+	dealerOneDelimiter := r.FormValue("dealerOneDelimiter")
+	dealerOneOrderAndPrice := r.FormValue("dealerOneOrderAndPrice")
+
+	dealerTwoDelimiter := r.FormValue("dealerTwoDelimiter")
+	dealerTwoOrderAndPrice := r.FormValue("dealerTwoOrderAndPrice")
+
+	dealerColumnStr := r.FormValue("dealerColumn")
+	dealerNumberStr := r.FormValue("dealerNumber")
+
+	dealerColumn := -1
+	var dealerNumber int
+
+	fmt.Println(dealerNumber)
+
+	if dealerColumnStr != "" {
+		var err error
+		dealerColumn, err = strconv.Atoi(dealerColumnStr)
+		if err != nil {
+			http.Error(w, "Invalid dealer column value", http.StatusBadRequest)
+			h.logger.Error().Err(err).Msg("Invalid dealer column value")
+			return
+		}
+		dealerColumn-- // Adjust for 0-indexing
+
+		dealerNumber, err = strconv.Atoi(dealerNumberStr)
+		if err != nil {
+			http.Error(w, "Invalid dealer number value", http.StatusBadRequest)
+			h.logger.Error().Err(err).Msg("Invalid dealer number value")
+			return
+		}
+	}
+
+	dealerOne, _, err := r.FormFile("dealerOne")
+	if err != nil {
+		http.Error(w, "Error retrieving the dealerOne file", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error retrieving the dealerOne file")
+		return
+	}
+	defer dealerOne.Close()
+
+	dealerTwo, _, err := r.FormFile("dealerTwo")
+	if err != nil {
+		http.Error(w, "Error retrieving the dealerTwo file", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error retrieving the dealerTwo file")
+		return
+	}
+	defer dealerTwo.Close()
+
+	dealerOneOrderAndPriceSplit := strings.Split(dealerOneOrderAndPrice, ",")
+	if len(dealerOneOrderAndPriceSplit) != 2 {
+		http.Error(w, "Invalid order values", http.StatusBadRequest)
+		h.logger.Error().Err(err).Msg("Invalid dealer one values")
+		return
+	}
+	dealerOnePriceIndex, err := strconv.Atoi(dealerOneOrderAndPriceSplit[0])
+	if err != nil {
+		http.Error(w, "Invalid index values in dealer one", http.StatusBadRequest)
+		h.logger.Error().Err(err).Msg("Invalid index values in dealer one")
+		return
+	}
+
+	dealerOneCodeIndex, err := strconv.Atoi(dealerOneOrderAndPriceSplit[1])
+	if err != nil {
+		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
+		h.logger.Error().Err(err).Msg("Invalid index values in dealer one")
+		return
+	}
+
+	// Adjust indices (assuming they start from 1 in the input)
+	dealerOnePriceIndex--
+	dealerOneCodeIndex--
+
+	dealerTwoReader := csv.NewReader(dealerTwo)
+	if dealerTwoDelimiter == ";" {
+		dealerTwoReader.Comma = ';'
+	} else {
+		dealerTwoReader.Comma = ','
+	}
+
+	dealerTwoOrderAndPriceSplit := strings.Split(dealerTwoOrderAndPrice, ",")
+	if len(dealerOneOrderAndPriceSplit) != 2 {
+		http.Error(w, "Invalid order values", http.StatusBadRequest)
+		h.logger.Error().Err(err).Msg("Invalid dealer one values")
+		return
+	}
+	dealerTwoPriceIndex, err := strconv.Atoi(dealerTwoOrderAndPriceSplit[0])
+	if err != nil {
+		http.Error(w, "Invalid index values in dealer one", http.StatusBadRequest)
+		h.logger.Error().Err(err).Msg("Invalid index values in dealer one")
+		return
+	}
+
+	dealerTwoCodeIndex, err := strconv.Atoi(dealerTwoOrderAndPriceSplit[1])
+	if err != nil {
+		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
+		h.logger.Error().Err(err).Msg("Invalid index values in dealer one")
+		return
+	}
+
+	dealerTwoPriceIndex--
+	dealerTwoCodeIndex--
+
+	d1, err := h.service.ReadFile(ctx, dealerOne, rune(dealerOneDelimiter[0]), dealerOnePriceIndex, dealerOneCodeIndex, dealerColumn)
+	if err != nil {
+		http.Error(w, "Could not read dealer one file", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Could not read dealer one file")
+		return
+	}
+
+	d2, err := h.service.ReadFileToMap(ctx, dealerTwo, rune(dealerTwoDelimiter[0]), dealerTwoPriceIndex, dealerTwoCodeIndex)
+	if err != nil {
+		http.Error(w, "Could not read dealer two file", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Could not read dealer two file")
+		return
+	}
+
+	res, err := h.service.CompareAndProcessFiles(ctx, d1, d2, dealerColumn, dealerNumber)
+	if err != nil {
+		http.Error(w, "Failed during comparison of dealers", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Failed during comparison of dealers")
+		return
+	}
+
+	w.Header().Set("Content-Disposition", "attachment; filename=updated_products.csv")
+	w.Header().Set("Content-Type", "text/csv")
+	csvWriter := csv.NewWriter(w)
+	err = csvWriter.WriteAll(res)
+	if err != nil {
+		http.Error(w, "Error writing to output file", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error writing to output file")
+		return
+	}
+}
+
 func (h *Handler) PingDB(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
@@ -366,7 +512,8 @@ func NewRouter(h *Handler) chi.Router {
 		r.Get("/product/{code}/results", h.GetProductResults)
 		r.Post("/order", h.SaveOrder)
 		r.Post("/contact", h.SendCustomerMessage)
-		r.Post("/handle-csv", h.ProcessCSVFiles)
+		r.Post("/handle-price-csv", h.ProcessPriceCSVFiles)
+		r.Post("/handle-dealer-csv", h.ProcessDealerCSVFiles)
 	})
 
 	return r
