@@ -360,7 +360,7 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 	dealerColumn := -1
 	var dealerNumber int
 
-	fmt.Println(dealerNumber)
+	withAdditionalData := r.FormValue("withAdditionalData")
 
 	if dealerColumnStr != "" {
 		var err error
@@ -464,7 +464,7 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	res, err := h.service.CompareAndProcessFiles(ctx, d1, d2, dealerColumn, dealerNumber)
+	res, err := h.service.CompareAndProcessFiles(ctx, d1, d2, dealerColumn, dealerNumber, withAdditionalData)
 	if err != nil {
 		http.Error(w, "Failed during comparison of dealers", http.StatusInternalServerError)
 		h.logger.Error().Err(err).Msg("Failed during comparison of dealers")
@@ -499,7 +499,7 @@ func NewRouter(h *Handler) chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://www.virena.ee", "http://localhost:3000"},
+		AllowedOrigins:   []string{"https://www.virena.ee", "http://localhost:3001"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Country"},
 		ExposedHeaders:   []string{"Link"},

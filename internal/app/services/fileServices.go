@@ -19,7 +19,7 @@ type Dealer struct {
 type FileService interface {
 	ReadFile(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, dealerColumn int) ([]Dealer, error)
 	ReadFileToMap(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex int) (map[string]Dealer, error)
-	CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwo map[string]Dealer, dealerColumn, dealerNumber int) ([][]string, error)
+	CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwo map[string]Dealer, dealerColumn, dealerNumber int, withAdditionalData string) ([][]string, error)
 }
 
 type fileServiceImpl struct{}
@@ -88,13 +88,22 @@ func (s *fileServiceImpl) ReadFileToMap(ctx context.Context, file multipart.File
 	return dealersMap, nil
 }
 
-func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwoMap map[string]Dealer, dealerColumn, dealerNumber int) ([][]string, error) {
-	results := [][]string{{"Code", "Best Price", "Dealer Number"}}
+func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwoMap map[string]Dealer, dealerColumn, dealerNumber int, withAdditionalData string) ([][]string, error) {
+	var results [][]string
+
+	if withAdditionalData == "" {
+		results = [][]string{{"Code", "Best Price", "Dealer Number"}}
+	} else {
+		results = [][]string{{"Code", "Best Price", "Dealer Number", "Worst Price", "Price Ratio"}}
+	}
 
 	for _, d1 := range dealerOne {
 		code := d1.Code
 		bestPrice := d1.Price
 		var dealerNum string
+
+		var worstPrice float64
+		var priceRatio float64
 
 		if dealerColumn > 0 {
 			dealerNum = d1.Dealer
@@ -104,16 +113,29 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 
 		if d2, found := dealerTwoMap[code]; found {
 			if d2.Price < bestPrice {
+				worstPrice = bestPrice
 				bestPrice = d2.Price
+
 				if dealerNumber > 0 {
 					dealerNum = strconv.Itoa(dealerNumber)
 				} else {
 					dealerNum = "2"
 				}
+			} else {
+				worstPrice = d2.Price
 			}
 		}
 
-		results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum})
+		if withAdditionalData == "" {
+			results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum})
+		} else {
+			priceRatio = worstPrice / bestPrice
+
+			wp := fmt.Sprintf("%.2f", worstPrice)
+			pr := fmt.Sprintf("%.2f", priceRatio)
+
+			results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, wp, pr})
+		}
 	}
 
 	for code, d2 := range dealerTwoMap {
