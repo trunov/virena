@@ -133,9 +133,10 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 }
 
 func parsePrice(priceStr string) float64 {
-	priceStr = strings.Replace(priceStr, "\u00A0", "", -1)
-	priceStr = strings.TrimSpace(priceStr)
-	priceStr = strings.Replace(priceStr, ",", ".", -1) // Convert comma to dot for parsing
+	priceStr = strings.Replace(priceStr, "\u00A0", "", -1) // Remove non-breaking spaces
+	priceStr = strings.TrimSpace(priceStr)                 // Trim any leading or trailing whitespace
+	priceStr = strings.Replace(priceStr, ",", ".", -1)     // Convert comma to dot for parsing
+	priceStr = strings.Replace(priceStr, " ", "", -1)      // Remove regular spaces
 	price, err := strconv.ParseFloat(priceStr, 64)
 	if err != nil {
 		fmt.Printf("Failed to parse price '%s': %v\n", priceStr, err)
