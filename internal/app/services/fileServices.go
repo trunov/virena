@@ -103,7 +103,6 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 		var dealerNum string
 
 		var worstPrice float64
-		var priceRatio float64
 
 		if dealerColumn > 0 {
 			dealerNum = d1.Dealer
@@ -129,10 +128,17 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 		if withAdditionalData == "" {
 			results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum})
 		} else {
-			priceRatio = worstPrice / bestPrice
+			var pr string
+
+			if bestPrice > 0 && worstPrice > 0 {
+				priceRatio := ((worstPrice - bestPrice) / bestPrice) * 100
+				pr = fmt.Sprintf("%.0f%%", priceRatio)
+			} else {
+				// Handle missing or zero prices
+				pr = "N/A"
+			}
 
 			wp := fmt.Sprintf("%.2f", worstPrice)
-			pr := fmt.Sprintf("%.2f", priceRatio)
 
 			results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, wp, pr})
 		}
