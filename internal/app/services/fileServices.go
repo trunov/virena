@@ -110,7 +110,19 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 			dealerNum = "1"
 		}
 
-		if d2, found := dealerTwoMap[code]; found {
+		d2, found := dealerTwoMap[code]
+		if !found {
+			if code[0] == '0' {
+				unprefixedCode := code[1:]
+				d2, found = dealerTwoMap[unprefixedCode]
+
+			} else {
+				prefixedCode := "0" + code
+				d2, found = dealerTwoMap[prefixedCode]
+			}
+		}
+
+		if found {
 			if d2.Price < bestPrice {
 				worstPrice = bestPrice
 				bestPrice = d2.Price
