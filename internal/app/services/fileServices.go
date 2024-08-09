@@ -97,6 +97,8 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 		results = [][]string{{"Code", "Best Price", "Dealer Number", "Worst Price", "Price Ratio"}}
 	}
 
+	processedCodes := make(map[string]struct{})
+
 	for _, d1 := range dealerOne {
 		code := d1.Code
 		bestPrice := d1.Price
@@ -135,29 +137,30 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 			} else {
 				worstPrice = d2.Price
 			}
-		}
 
-		if withAdditionalData == "" {
-			results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum})
-		} else {
-			var pr string
+			processedCodes[code] = struct{}{}
 
-			if bestPrice > 0 && worstPrice > 0 {
-				priceRatio := ((worstPrice - bestPrice) / bestPrice) * 100
-				pr = fmt.Sprintf("%.0f%%", priceRatio)
+			if withAdditionalData == "" {
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum})
 			} else {
-				// Handle missing or zero prices
-				pr = "N/A"
+				priceRatio := ((worstPrice - bestPrice) / bestPrice) * 100
+				pr := fmt.Sprintf("%.0f%%", priceRatio)
+				wp := fmt.Sprintf("%.2f", worstPrice)
+
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, wp, pr})
 			}
-
-			wp := fmt.Sprintf("%.2f", worstPrice)
-
-			results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, wp, pr})
+		} else {
+			// Code not found in dealerTwoMap, append with N/A values
+			if withAdditionalData == "" {
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum})
+			} else {
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, "N/A", "N/A"})
+			}
 		}
 	}
 
 	for code, d2 := range dealerTwoMap {
-		if _, found := dealerTwoMap[code]; found {
+		if _, found := processedCodes[code]; found {
 			continue
 		}
 
@@ -166,7 +169,11 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 			dealerNum = strconv.Itoa(dealerNumber)
 		}
 
-		results = append(results, []string{code, fmt.Sprintf("%.2f", d2.Price), dealerNum})
+		if withAdditionalData == "" {
+			results = append(results, []string{code, fmt.Sprintf("%.2f", d2.Price), dealerNum})
+		} else {
+			results = append(results, []string{code, fmt.Sprintf("%.2f", d2.Price), dealerNum, "N/A", "N/A"})
+		}
 	}
 
 	return results, nil
