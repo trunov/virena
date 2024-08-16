@@ -16,11 +16,10 @@ type Dealer struct {
 	Price       float64
 	Dealer      string
 	Description string
-	Weight      string
 }
 
 type FileService interface {
-	ReadFile(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, dealerColumn, descriptionIndex, weightIndex int) ([]Dealer, error)
+	ReadFile(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, dealerColumn, descriptionIndex int) ([]Dealer, error)
 	ReadFileToMap(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, descriptionIndex int) (map[string]Dealer, error)
 	CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwo map[string]Dealer, dealerColumn, dealerNumber int, withAdditionalData string) ([][]string, error)
 }
@@ -57,18 +56,12 @@ func (s *fileServiceImpl) ReadFile(ctx context.Context, file multipart.File, del
 		}
 
 		// Handle cases where optional indices might be missing
-		var description, weight string
+		var description string
 
 		if descriptionIndex >= 0 && descriptionIndex < len(record) {
 			description = record[descriptionIndex]
 		} else {
 			description = ""
-		}
-
-		if weightIndex >= 0 && weightIndex < len(record) {
-			weight = record[weightIndex]
-		} else {
-			weight = ""
 		}
 
 		if dealerColumn > 0 && dealerColumn < len(record) {
@@ -77,14 +70,12 @@ func (s *fileServiceImpl) ReadFile(ctx context.Context, file multipart.File, del
 				Price:       parsePrice(record[priceIndex]),
 				Dealer:      record[dealerColumn],
 				Description: description,
-				Weight:      weight,
 			})
 		} else {
 			dealers = append(dealers, Dealer{
 				Code:        record[codeIndex],
 				Price:       parsePrice(record[priceIndex]),
 				Description: description,
-				Weight:      weight,
 			})
 		}
 	}
