@@ -166,6 +166,11 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 			}
 		}
 
+		// let's try to compare product code from description which represents replacementCode in some cases
+		if !found {
+			d2, found = dealerTwoMap[d1.Description]
+		}
+
 		if found {
 			if d2.Price < bestPrice {
 				worstPrice = bestPrice
