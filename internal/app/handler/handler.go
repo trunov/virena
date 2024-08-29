@@ -197,6 +197,7 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 	} else {
 		priceReader.Comma = ','
 	}
+	priceReader.FieldsPerRecord = -1
 
 	priceCodeDescriptionOrderSplit := strings.Split(priceCodeDescriptionOrder, ",")
 	// trim for priceAndCodeOrder
@@ -256,7 +257,14 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 		if len(record) > codeIndex && len(record) > priceIndex {
 			partCode := record[codeIndex]
 			partPrice := record[priceIndex]
-			description := record[descriptionIndex]
+
+			// we don't take this if client provides 0 as argument
+			var description string
+			if descriptionIndex >= 0 {
+				description = record[descriptionIndex]
+			} else {
+				description = ""
+			}
 
 			var dealerInfo string
 			if dealerColumn >= 0 && len(record) > dealerColumn {
