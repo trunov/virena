@@ -22,8 +22,9 @@ import (
 )
 
 type PriceDealerInfo struct {
-	Price  string
-	Dealer string
+	Price       string
+	Dealer      string
+	Description string
 }
 
 type Handler struct {
@@ -155,7 +156,7 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	priceDelimiter := r.FormValue("priceDelimiter")
-	priceAndCodeOrder := r.FormValue("priceAndCodeOrder")
+	priceCodeDescriptionOrder := r.FormValue("priceCodeDescriptionOrder")
 	productDelimiter := r.FormValue("productDelimiter")
 	productOrder := r.FormValue("productOrder")
 	percentage := r.FormValue("percentage")
@@ -197,22 +198,29 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 		priceReader.Comma = ','
 	}
 
-	priceAndCodeOrderSplit := strings.Split(priceAndCodeOrder, ",")
+	priceCodeDescriptionOrderSplit := strings.Split(priceCodeDescriptionOrder, ",")
 	// trim for priceAndCodeOrder
 	productOrderIndex, err := strconv.Atoi(productOrder)
-	if err != nil || len(priceAndCodeOrderSplit) != 2 {
+	if err != nil || len(priceCodeDescriptionOrderSplit) != 3 {
 		http.Error(w, "Invalid order values", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid order values")
 		return
 	}
-	priceIndex, err := strconv.Atoi(priceAndCodeOrderSplit[0])
+	priceIndex, err := strconv.Atoi(priceCodeDescriptionOrderSplit[0])
 	if err != nil {
 		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid index values in order")
 		return
 	}
 
-	codeIndex, err := strconv.Atoi(priceAndCodeOrderSplit[1])
+	codeIndex, err := strconv.Atoi(priceCodeDescriptionOrderSplit[1])
+	if err != nil {
+		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
+		h.logger.Error().Err(err).Msg("Invalid index values in order")
+		return
+	}
+
+	descriptionIndex, err := strconv.Atoi(priceCodeDescriptionOrderSplit[2])
 	if err != nil {
 		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid index values in order")
@@ -230,6 +238,7 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 	priceIndex--
 	codeIndex--
 	productOrderIndex--
+	descriptionIndex--
 
 	// Creating a map for prices
 	pricesMap := make(map[string]PriceDealerInfo)
@@ -247,11 +256,13 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 		if len(record) > codeIndex && len(record) > priceIndex {
 			partCode := record[codeIndex]
 			partPrice := record[priceIndex]
+			description := record[descriptionIndex]
+
 			var dealerInfo string
 			if dealerColumn >= 0 && len(record) > dealerColumn {
 				dealerInfo = record[dealerColumn]
 			}
-			pricesMap[partCode] = PriceDealerInfo{Price: partPrice, Dealer: dealerInfo}
+			pricesMap[partCode] = PriceDealerInfo{Price: partPrice, Dealer: dealerInfo, Description: description}
 		}
 	}
 
@@ -281,6 +292,10 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 				record = append(record, "dealer")
 			}
 
+			if descriptionIndex >= 0 {
+				record = append(record, "replacement code")
+			}
+
 			productRecords[i] = record
 			continue
 		}
@@ -289,9 +304,13 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 
 		info, ok := pricesMap[productCode]
 		if !ok {
-			// Try with '0' prefix if the original product code is not found
-			prefixedProductCode := "0" + productCode
-			info, ok = pricesMap[prefixedProductCode]
+			if productCode[0] == '0' {
+				unprefixedCode := productCode[1:]
+				info, ok = pricesMap[unprefixedCode]
+			} else {
+				prefixedCode := "0" + productCode
+				info, ok = pricesMap[prefixedCode]
+			}
 		}
 
 		var newPriceStr string
@@ -322,6 +341,16 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 		if dealerColumn >= 0 {
 			dealerInfo := info.Dealer
 			record = append(record, dealerInfo)
+		}
+
+		if descriptionIndex >= 0 {
+			potentiallyReplacementCode := info.Description
+			info, ok = pricesMap[potentiallyReplacementCode]
+			if ok {
+				record = append(record, potentiallyReplacementCode)
+			} else {
+				record = append(record, "")
+			}
 		}
 
 		productRecords[i] = record

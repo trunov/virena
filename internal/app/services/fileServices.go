@@ -159,7 +159,6 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 			if code[0] == '0' {
 				unprefixedCode := code[1:]
 				d2, found = dealerTwoMap[unprefixedCode]
-
 			} else {
 				prefixedCode := "0" + code
 				d2, found = dealerTwoMap[prefixedCode]
