@@ -155,7 +155,8 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 		}
 
 		d2, found := dealerTwoMap[code]
-		if !found {
+		// since some files might have empty codes
+		if !found && len(code) > 1 {
 			if code[0] == '0' {
 				unprefixedCode := code[1:]
 				d2, found = dealerTwoMap[unprefixedCode]
@@ -232,7 +233,6 @@ func parsePrice(priceStr string) float64 {
 	priceStr = strings.Replace(priceStr, " ", "", -1)      // Remove regular spaces
 	price, err := strconv.ParseFloat(priceStr, 64)
 	if err != nil {
-		fmt.Printf("Failed to parse price '%s': %v\n", priceStr, err)
 		return 0
 	}
 	return price
