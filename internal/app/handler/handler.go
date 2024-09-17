@@ -155,6 +155,14 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defer func() {
+		if r := recover(); r != nil {
+			errMsg := fmt.Sprintf("Panic occurred: %v", r)
+			h.logger.Error().Msg(errMsg)
+			http.Error(w, errMsg, http.StatusInternalServerError)
+		}
+	}()
+
 	priceDelimiter := r.FormValue("priceDelimiter")
 	priceCodeDescriptionOrder := r.FormValue("priceCodeDescriptionOrder")
 	productDelimiter := r.FormValue("productDelimiter")
