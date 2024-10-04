@@ -80,7 +80,7 @@ func SendOrderEmail(client *sendgrid.Client, orderID int, orderData postgres.Ord
 	return nil
 }
 
-func SendCustomerMessageEmail(client *sendgrid.Client, formData map[string]string, fileHeader *multipart.FileHeader, logger zerolog.Logger) error {
+func SendCustomerMessageEmail(client *sendgrid.Client, formData map[string]string, fileHeaders []*multipart.FileHeader, logger zerolog.Logger) error {
 	from := mail.NewEmail("Virena", "info@virena.ee")
 	to := mail.NewEmail("Virena", "info@virena.ee")
 
@@ -94,27 +94,29 @@ func SendCustomerMessageEmail(client *sendgrid.Client, formData map[string]strin
 
 	message := mail.NewV3MailInit(from, subject, to, mail.NewContent("text/plain", content.String()))
 
-	if fileHeader != nil {
-		file, err := fileHeader.Open()
-		if err != nil {
-			logger.Error().Err(err).Msg("Failed to open file attachment")
-			return err
-		}
-		defer file.Close()
+	for _, fileHeader := range fileHeaders {
+		if fileHeader != nil {
+			file, err := fileHeader.Open()
+			if err != nil {
+				logger.Error().Err(err).Msg("Failed to open file attachment")
+				return err
+			}
+			defer file.Close()
 
-		fileContent, err := io.ReadAll(file)
-		if err != nil {
-			logger.Error().Err(err).Msg("Failed to read file attachment")
-			return err
-		}
+			fileContent, err := io.ReadAll(file)
+			if err != nil {
+				logger.Error().Err(err).Msg("Failed to read file attachment")
+				return err
+			}
 
-		encodedContent := base64.StdEncoding.EncodeToString(fileContent)
-		attachment := mail.NewAttachment()
-		attachment.SetContent(encodedContent)
-		attachment.SetType(http.DetectContentType(fileContent))
-		attachment.SetFilename(fileHeader.Filename)
-		attachment.SetDisposition("attachment")
-		message.AddAttachment(attachment)
+			encodedContent := base64.StdEncoding.EncodeToString(fileContent)
+			attachment := mail.NewAttachment()
+			attachment.SetContent(encodedContent)
+			attachment.SetType(http.DetectContentType(fileContent))
+			attachment.SetFilename(fileHeader.Filename)
+			attachment.SetDisposition("attachment")
+			message.AddAttachment(attachment)
+		}
 	}
 
 	response, err := client.Send(message)

@@ -127,17 +127,10 @@ func (h *Handler) SendCustomerMessage(w http.ResponseWriter, r *http.Request) {
 	formData["subject"] = r.FormValue("subject")
 	formData["message"] = r.FormValue("message")
 
-	file, fileHeader, err := r.FormFile("fileAttachment")
-	if err != nil && err != http.ErrMissingFile {
-		http.Error(w, "Error retrieving the file", http.StatusInternalServerError)
-		h.logger.Error().Err(err).Msg("Error retrieving the file")
-		return
-	}
-	if file != nil {
-		defer file.Close()
-	}
+	multipartForm := r.MultipartForm
+	fileHeaders := multipartForm.File["fileAttachment"]
 
-	err = sg.SendCustomerMessageEmail(h.sendGridClient, formData, fileHeader, h.logger)
+	err = sg.SendCustomerMessageEmail(h.sendGridClient, formData, fileHeaders, h.logger)
 	if err != nil {
 		http.Error(w, "Error sending email", http.StatusInternalServerError)
 		h.logger.Error().Err(err).Msg("Error sending email")
