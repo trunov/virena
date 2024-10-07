@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 	"strings"
@@ -127,8 +128,14 @@ func (h *Handler) SendCustomerMessage(w http.ResponseWriter, r *http.Request) {
 	formData["subject"] = r.FormValue("subject")
 	formData["message"] = r.FormValue("message")
 
+	var fileHeaders []*multipart.FileHeader
+
 	multipartForm := r.MultipartForm
-	fileHeaders := multipartForm.File["fileAttachment"]
+	for key := range multipartForm.File {
+		if strings.HasPrefix(key, "fileAttachment") {
+			fileHeaders = append(fileHeaders, multipartForm.File[key]...)
+		}
+	}
 
 	err = sg.SendCustomerMessageEmail(h.sendGridClient, formData, fileHeaders, h.logger)
 	if err != nil {
