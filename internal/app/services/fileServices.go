@@ -9,6 +9,8 @@ import (
 	"mime/multipart"
 	"strconv"
 	"strings"
+
+	"github.com/trunov/virena/internal/app/util"
 )
 
 type Dealer struct {
@@ -21,7 +23,7 @@ type Dealer struct {
 type FileService interface {
 	ReadFile(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, dealerColumn, descriptionIndex int) ([]Dealer, error)
 	ReadFileToMap(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, descriptionIndex int) (map[string]Dealer, error)
-	CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwo map[string]Dealer, dealerColumn, dealerNumber int, withAdditionalData string) ([][]string, error)
+	CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwo map[string]Dealer, dealerColumn, dealerNumber, offsetPercentage int, withAdditionalData string) ([][]string, error)
 }
 
 type fileServiceImpl struct{}
@@ -118,7 +120,7 @@ func (s *fileServiceImpl) ReadFileToMap(ctx context.Context, file multipart.File
 	return dealersMap, nil
 }
 
-func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwoMap map[string]Dealer, dealerColumn, dealerNumber int, withAdditionalData string) ([][]string, error) {
+func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwoMap map[string]Dealer, dealerColumn, dealerNumber, offsetPercentage int, withAdditionalData string) ([][]string, error) {
 	var results [][]string
 
 	if withAdditionalData == "" {
@@ -161,13 +163,22 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 
 		if found {
 			if d2.Price < bestPrice {
-				worstPrice = bestPrice
-				bestPrice = d2.Price
+				if offsetPercentage > 0 {
+					priceDifference := ((bestPrice - d2.Price) / bestPrice) * 100
 
-				if dealerNumber > 0 {
-					dealerNum = strconv.Itoa(dealerNumber)
+					if priceDifference <= float64(offsetPercentage) {
+						worstPrice = bestPrice
+					} else {
+						worstPrice = bestPrice
+						bestPrice = d2.Price
+
+						dealerNum = util.GetDealerNum(dealerNumber)
+					}
 				} else {
-					dealerNum = "2"
+					worstPrice = bestPrice
+					bestPrice = d2.Price
+
+					dealerNum = util.GetDealerNum(dealerNumber)
 				}
 			} else {
 				worstPrice = d2.Price

@@ -2,6 +2,7 @@ package util
 
 import (
 	"math/rand"
+	"strconv"
 	"time"
 )
 
@@ -31,4 +32,11 @@ func ConvertToGMTPlus3(createdDate time.Time) string {
 	humanReadable := convertedDate.Format("2006-01-02 15:04:05")
 
 	return humanReadable
+}
+
+func GetDealerNum(dealerNumber int) string {
+	if dealerNumber > 0 {
+		return strconv.Itoa(dealerNumber)
+	}
+	return "2"
 }
