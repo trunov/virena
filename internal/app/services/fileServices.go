@@ -16,11 +16,10 @@ type Dealer struct {
 	Price       float64
 	Dealer      string
 	Description string
-	Weight      string
 }
 
 type FileService interface {
-	ReadFile(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, dealerColumn, descriptionIndex, weightIndex int) ([]Dealer, error)
+	ReadFile(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, dealerColumn, descriptionIndex int) ([]Dealer, error)
 	ReadFileToMap(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, descriptionIndex int) (map[string]Dealer, error)
 	CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwo map[string]Dealer, dealerColumn, dealerNumber int, withAdditionalData string) ([][]string, error)
 }
@@ -31,7 +30,7 @@ func NewFileService() FileService {
 	return &fileServiceImpl{}
 }
 
-func (s *fileServiceImpl) ReadFile(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, dealerColumn, descriptionIndex, weightIndex int) ([]Dealer, error) {
+func (s *fileServiceImpl) ReadFile(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, dealerColumn, descriptionIndex int) ([]Dealer, error) {
 	content, err := io.ReadAll(file)
 	if err != nil {
 		return nil, err
@@ -57,18 +56,11 @@ func (s *fileServiceImpl) ReadFile(ctx context.Context, file multipart.File, del
 		}
 
 		// Handle cases where optional indices might be missing
-		var description, weight string
-
+		var description string
 		if descriptionIndex >= 0 && descriptionIndex < len(record) {
 			description = record[descriptionIndex]
 		} else {
 			description = ""
-		}
-
-		if weightIndex >= 0 && weightIndex < len(record) {
-			weight = record[weightIndex]
-		} else {
-			weight = ""
 		}
 
 		if dealerColumn > 0 && dealerColumn < len(record) {
@@ -77,19 +69,15 @@ func (s *fileServiceImpl) ReadFile(ctx context.Context, file multipart.File, del
 				Price:       parsePrice(record[priceIndex]),
 				Dealer:      record[dealerColumn],
 				Description: description,
-				Weight:      weight,
 			})
 		} else {
 			dealers = append(dealers, Dealer{
 				Code:        record[codeIndex],
 				Price:       parsePrice(record[priceIndex]),
 				Description: description,
-				Weight:      weight,
 			})
 		}
 	}
-
-	fmt.Println(counter)
 
 	return dealers, nil
 }
@@ -134,9 +122,9 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 	var results [][]string
 
 	if withAdditionalData == "" {
-		results = [][]string{{"Code", "Best Price", "Dealer Number", "Description", "Weight"}}
+		results = [][]string{{"Code", "Best Price", "Dealer Number", "Description"}}
 	} else {
-		results = [][]string{{"Code", "Best Price", "Dealer Number", "Description", "Weight", "Worst Price", "Price Ratio"}}
+		results = [][]string{{"Code", "Best Price", "Dealer Number", "Description", "Worst Price", "Price Ratio"}}
 	}
 
 	processedCodes := make(map[string]struct{})
@@ -188,20 +176,20 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 			processedCodes[code] = struct{}{}
 
 			if withAdditionalData == "" {
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, d1.Description, d1.Weight})
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, d1.Description})
 			} else {
 				priceRatio := ((worstPrice - bestPrice) / bestPrice) * 100
 				pr := fmt.Sprintf("%.0f%%", priceRatio)
 				wp := fmt.Sprintf("%.2f", worstPrice)
 
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, d1.Description, d1.Weight, wp, pr})
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, d1.Description, wp, pr})
 			}
 		} else {
 			// Code not found in dealerTwoMap, append with N/A values
 			if withAdditionalData == "" {
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, d1.Description, d1.Weight})
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, d1.Description})
 			} else {
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, d1.Description, d1.Weight, "N/A", "N/A"})
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, d1.Description, "N/A", "N/A"})
 			}
 		}
 	}

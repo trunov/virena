@@ -394,7 +394,7 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 	}
 
 	dealerOneDelimiter := r.FormValue("dealerOneDelimiter")
-	dealerOneOrderPriceWeightAndDescription := r.FormValue("dealerOneOrderPriceWeightAndDescription")
+	dealerOneOrderPriceAndDescription := r.FormValue("dealerOneOrderPriceAndDescription")
 
 	dealerTwoDelimiter := r.FormValue("dealerTwoDelimiter")
 	dealerTwoOrderPriceAndDescription := r.FormValue("dealerTwoOrderPriceAndDescription")
@@ -441,12 +441,13 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 	}
 	defer dealerTwo.Close()
 
-	dealerOneOrderPriceWeightAndDescriptionSplit := strings.Split(dealerOneOrderPriceWeightAndDescription, ",")
-	if len(dealerOneOrderPriceWeightAndDescriptionSplit) != 4 {
+	dealerOneOrderPriceWeightAndDescriptionSplit := strings.Split(dealerOneOrderPriceAndDescription, ",")
+	if len(dealerOneOrderPriceWeightAndDescriptionSplit) != 3 {
 		http.Error(w, "Invalid order values", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid dealer one values")
 		return
 	}
+
 	dealerOnePriceIndex, err := strconv.Atoi(dealerOneOrderPriceWeightAndDescriptionSplit[0])
 	if err != nil {
 		http.Error(w, "Invalid index values in dealer one", http.StatusBadRequest)
@@ -468,18 +469,10 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	dealerOneWeightIndex, err := strconv.Atoi(dealerOneOrderPriceWeightAndDescriptionSplit[3])
-	if err != nil {
-		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
-		h.logger.Error().Err(err).Msg("Invalid index values in dealer one")
-		return
-	}
-
 	// Adjust indices (assuming they start from 1 in the input)
 	dealerOnePriceIndex--
 	dealerOneCodeIndex--
 	dealerOneDescriptionIndex--
-	dealerOneWeightIndex--
 
 	dealerTwoReader := csv.NewReader(dealerTwo)
 	if dealerTwoDelimiter == ";" {
@@ -519,12 +512,7 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 	dealerTwoCodeIndex--
 	dealerTwoDescriptionIndex--
 
-	fmt.Println(dealerOnePriceIndex)
-	fmt.Println(dealerOneCodeIndex)
-	fmt.Println(dealerOneDescriptionIndex)
-	fmt.Println(dealerOneWeightIndex)
-
-	d1, err := h.service.ReadFile(ctx, dealerOne, rune(dealerOneDelimiter[0]), dealerOnePriceIndex, dealerOneCodeIndex, dealerColumn, dealerOneDescriptionIndex, dealerOneWeightIndex)
+	d1, err := h.service.ReadFile(ctx, dealerOne, rune(dealerOneDelimiter[0]), dealerOnePriceIndex, dealerOneCodeIndex, dealerColumn, dealerOneDescriptionIndex)
 	if err != nil {
 		http.Error(w, "Could not read dealer one file", http.StatusInternalServerError)
 		h.logger.Error().Err(err).Msg("Could not read dealer one file")
