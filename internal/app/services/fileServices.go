@@ -161,6 +161,11 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 			d2, found = dealerTwoMap[d1.Description]
 		}
 
+		description := d1.Description
+		if description == "" {
+			description = d2.Description
+		}
+
 		if found {
 			if d2.Price < bestPrice {
 				if offsetPercentage > 0 {
@@ -187,20 +192,20 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 			processedCodes[code] = struct{}{}
 
 			if withAdditionalData == "" {
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, d1.Description})
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, description})
 			} else {
 				priceRatio := ((worstPrice - bestPrice) / bestPrice) * 100
 				pr := fmt.Sprintf("%.0f%%", priceRatio)
 				wp := fmt.Sprintf("%.2f", worstPrice)
 
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, d1.Description, wp, pr})
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, description, wp, pr})
 			}
 		} else {
 			// Code not found in dealerTwoMap, append with N/A values
 			if withAdditionalData == "" {
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, d1.Description})
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, description})
 			} else {
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, d1.Description, "N/A", "N/A"})
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, description, "N/A", "N/A"})
 			}
 		}
 	}
