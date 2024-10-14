@@ -14,15 +14,14 @@ import (
 )
 
 type Dealer struct {
-	Code        string
-	Price       float64
-	Dealer      string
-	Description string
+	Code   string
+	Price  float64
+	Dealer string
 }
 
 type FileService interface {
-	ReadFile(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, dealerColumn, descriptionIndex int) ([]Dealer, error)
-	ReadFileToMap(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, descriptionIndex int) (map[string]Dealer, error)
+	ReadFile(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, dealerColumn int) ([]Dealer, error)
+	ReadFileToMap(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex int) (map[string]Dealer, error)
 	CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwo map[string]Dealer, dealerColumn, dealerNumber, offsetPercentage int, withAdditionalData string) ([][]string, error)
 }
 
@@ -32,7 +31,7 @@ func NewFileService() FileService {
 	return &fileServiceImpl{}
 }
 
-func (s *fileServiceImpl) ReadFile(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, dealerColumn, descriptionIndex int) ([]Dealer, error) {
+func (s *fileServiceImpl) ReadFile(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, dealerColumn int) ([]Dealer, error) {
 	content, err := io.ReadAll(file)
 	if err != nil {
 		return nil, err
@@ -57,26 +56,16 @@ func (s *fileServiceImpl) ReadFile(ctx context.Context, file multipart.File, del
 			continue
 		}
 
-		// Handle cases where optional indices might be missing
-		var description string
-		if descriptionIndex >= 0 && descriptionIndex < len(record) {
-			description = record[descriptionIndex]
-		} else {
-			description = ""
-		}
-
 		if dealerColumn > 0 && dealerColumn < len(record) {
 			dealers = append(dealers, Dealer{
-				Code:        record[codeIndex],
-				Price:       parsePrice(record[priceIndex]),
-				Dealer:      record[dealerColumn],
-				Description: description,
+				Code:   record[codeIndex],
+				Price:  parsePrice(record[priceIndex]),
+				Dealer: record[dealerColumn],
 			})
 		} else {
 			dealers = append(dealers, Dealer{
-				Code:        record[codeIndex],
-				Price:       parsePrice(record[priceIndex]),
-				Description: description,
+				Code:  record[codeIndex],
+				Price: parsePrice(record[priceIndex]),
 			})
 		}
 	}
@@ -84,7 +73,7 @@ func (s *fileServiceImpl) ReadFile(ctx context.Context, file multipart.File, del
 	return dealers, nil
 }
 
-func (s *fileServiceImpl) ReadFileToMap(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, descriptionIndex int) (map[string]Dealer, error) {
+func (s *fileServiceImpl) ReadFileToMap(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex int) (map[string]Dealer, error) {
 	reader := csv.NewReader(file)
 	reader.Comma = delimiter
 	dealersMap := make(map[string]Dealer)
@@ -100,18 +89,9 @@ func (s *fileServiceImpl) ReadFileToMap(ctx context.Context, file multipart.File
 			return nil, err
 		}
 
-		var description string
-
-		if descriptionIndex >= 0 && descriptionIndex < len(record) {
-			description = record[descriptionIndex]
-		} else {
-			description = ""
-		}
-
 		dealer := Dealer{
-			Code:        record[codeIndex],
-			Price:       parsePrice(record[priceIndex]),
-			Description: description,
+			Code:  record[codeIndex],
+			Price: parsePrice(record[priceIndex]),
 		}
 
 		dealersMap[dealer.Code] = dealer
@@ -124,9 +104,9 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 	var results [][]string
 
 	if withAdditionalData == "" {
-		results = [][]string{{"Code", "Best Price", "Dealer Number", "Description"}}
+		results = [][]string{{"Code", "Best Price", "Dealer Number"}}
 	} else {
-		results = [][]string{{"Code", "Best Price", "Dealer Number", "Description", "Worst Price", "Price Ratio"}}
+		results = [][]string{{"Code", "Best Price", "Dealer Number", "Worst Price", "Price Ratio"}}
 	}
 
 	processedCodes := make(map[string]struct{})
@@ -156,21 +136,20 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 			}
 		}
 
-		// let's try to compare product code from description which represents replacementCode in some cases
-		if !found {
-			d2, found = dealerTwoMap[d1.Description]
-		}
-
-		description := d1.Description
-		if description == "" {
-			description = d2.Description
-		}
+		// func GetDealerNumМ(dealerNumber int) string {
+		// 	if dealerNumber > 0 {
+		// 		return strconv.Itoa(dealerNumber)
+		// 	}
+		// 	return "2"
+		// }
 
 		if found {
+			// 1,647,26 < 1458,14
 			if d2.Price < bestPrice {
 				if offsetPercentage > 0 {
 					priceDifference := ((bestPrice - d2.Price) / bestPrice) * 100
 
+					// should we change dealer number or not ? probably should remain it
 					if priceDifference <= float64(offsetPercentage) {
 						worstPrice = bestPrice
 					} else {
@@ -192,20 +171,20 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 			processedCodes[code] = struct{}{}
 
 			if withAdditionalData == "" {
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, description})
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum})
 			} else {
 				priceRatio := ((worstPrice - bestPrice) / bestPrice) * 100
 				pr := fmt.Sprintf("%.0f%%", priceRatio)
 				wp := fmt.Sprintf("%.2f", worstPrice)
 
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, description, wp, pr})
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, wp, pr})
 			}
 		} else {
 			// Code not found in dealerTwoMap, append with N/A values
 			if withAdditionalData == "" {
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, description})
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum})
 			} else {
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, description, "N/A", "N/A"})
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, "N/A", "N/A"})
 			}
 		}
 	}
@@ -221,9 +200,9 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 		}
 
 		if withAdditionalData == "" {
-			results = append(results, []string{code, fmt.Sprintf("%.2f", d2.Price), dealerNum, d2.Description})
+			results = append(results, []string{code, fmt.Sprintf("%.2f", d2.Price), dealerNum})
 		} else {
-			results = append(results, []string{code, fmt.Sprintf("%.2f", d2.Price), dealerNum, d2.Description, "N/A", "N/A"})
+			results = append(results, []string{code, fmt.Sprintf("%.2f", d2.Price), dealerNum, "N/A", "N/A"})
 		}
 	}
 
