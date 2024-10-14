@@ -164,7 +164,7 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	priceDelimiter := r.FormValue("priceDelimiter")
-	priceCodeDescriptionOrder := r.FormValue("priceCodeDescriptionOrder")
+	priceAndCodeOrder := r.FormValue("priceAndCodeOrder")
 	productDelimiter := r.FormValue("productDelimiter")
 	productOrder := r.FormValue("productOrder")
 	percentage := r.FormValue("percentage")
@@ -207,29 +207,22 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 	}
 	priceReader.FieldsPerRecord = -1
 
-	priceCodeDescriptionOrderSplit := strings.Split(priceCodeDescriptionOrder, ",")
+	priceAndCodeOrderSplit := strings.Split(priceAndCodeOrder, ",")
 	// trim for priceAndCodeOrder
 	productOrderIndex, err := strconv.Atoi(productOrder)
-	if err != nil || len(priceCodeDescriptionOrderSplit) != 3 {
+	if err != nil || len(priceAndCodeOrderSplit) != 3 {
 		http.Error(w, "Invalid order values", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid order values")
 		return
 	}
-	priceIndex, err := strconv.Atoi(priceCodeDescriptionOrderSplit[0])
+	priceIndex, err := strconv.Atoi(priceAndCodeOrderSplit[0])
 	if err != nil {
 		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid index values in order")
 		return
 	}
 
-	codeIndex, err := strconv.Atoi(priceCodeDescriptionOrderSplit[1])
-	if err != nil {
-		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
-		h.logger.Error().Err(err).Msg("Invalid index values in order")
-		return
-	}
-
-	descriptionIndex, err := strconv.Atoi(priceCodeDescriptionOrderSplit[2])
+	codeIndex, err := strconv.Atoi(priceAndCodeOrderSplit[1])
 	if err != nil {
 		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid index values in order")
@@ -247,7 +240,6 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 	priceIndex--
 	codeIndex--
 	productOrderIndex--
-	descriptionIndex--
 
 	// Creating a map for prices
 	pricesMap := make(map[string]PriceDealerInfo)
@@ -266,19 +258,13 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 			partCode := record[codeIndex]
 			partPrice := record[priceIndex]
 
-			// we don't take this if client provides 0 as argument
-			var description string
-			if descriptionIndex >= 0 {
-				description = record[descriptionIndex]
-			} else {
-				description = ""
-			}
-
 			var dealerInfo string
 			if dealerColumn >= 0 && len(record) > dealerColumn {
 				dealerInfo = record[dealerColumn]
 			}
-			pricesMap[partCode] = PriceDealerInfo{Price: partPrice, Dealer: dealerInfo, Description: description}
+
+			// should add worst dealer number column and worst price column number
+			pricesMap[partCode] = PriceDealerInfo{Price: partPrice, Dealer: dealerInfo}
 		}
 	}
 
@@ -306,10 +292,6 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 
 			if dealerColumn >= 0 {
 				record = append(record, "dealer")
-			}
-
-			if descriptionIndex >= 0 {
-				record = append(record, "replacement code")
 			}
 
 			productRecords[i] = record
@@ -359,16 +341,6 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 			record = append(record, dealerInfo)
 		}
 
-		if descriptionIndex >= 0 {
-			potentiallyReplacementCode := info.Description
-			info, ok = pricesMap[potentiallyReplacementCode]
-			if ok {
-				record = append(record, potentiallyReplacementCode)
-			} else {
-				record = append(record, "")
-			}
-		}
-
 		productRecords[i] = record
 	}
 
@@ -394,10 +366,10 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 	}
 
 	dealerOneDelimiter := r.FormValue("dealerOneDelimiter")
-	dealerOneOrderPriceAndDescription := r.FormValue("dealerOneOrderPriceAndDescription")
+	dealerOnePriceAndCodeOrder := r.FormValue("dealerOnePriceAndCodeOrder")
 
 	dealerTwoDelimiter := r.FormValue("dealerTwoDelimiter")
-	dealerTwoOrderPriceAndDescription := r.FormValue("dealerTwoOrderPriceAndDescription")
+	dealerTwoPriceAndCodeOrder := r.FormValue("dealerTwoPriceAndCodeOrder")
 
 	dealerColumnStr := r.FormValue("dealerColumn")
 	dealerNumberStr := r.FormValue("dealerNumber")
@@ -453,28 +425,21 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 	}
 	defer dealerTwo.Close()
 
-	dealerOneOrderPriceWeightAndDescriptionSplit := strings.Split(dealerOneOrderPriceAndDescription, ",")
-	if len(dealerOneOrderPriceWeightAndDescriptionSplit) != 3 {
+	dealerOnePriceAndCodeOrderSplit := strings.Split(dealerOnePriceAndCodeOrder, ",")
+	if len(dealerOnePriceAndCodeOrderSplit) != 2 {
 		http.Error(w, "Invalid order values", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid dealer one values")
 		return
 	}
 
-	dealerOnePriceIndex, err := strconv.Atoi(dealerOneOrderPriceWeightAndDescriptionSplit[0])
+	dealerOnePriceIndex, err := strconv.Atoi(dealerOnePriceAndCodeOrderSplit[0])
 	if err != nil {
 		http.Error(w, "Invalid index values in dealer one", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid index values in dealer one")
 		return
 	}
 
-	dealerOneCodeIndex, err := strconv.Atoi(dealerOneOrderPriceWeightAndDescriptionSplit[1])
-	if err != nil {
-		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
-		h.logger.Error().Err(err).Msg("Invalid index values in dealer one")
-		return
-	}
-
-	dealerOneDescriptionIndex, err := strconv.Atoi(dealerOneOrderPriceWeightAndDescriptionSplit[2])
+	dealerOneCodeIndex, err := strconv.Atoi(dealerOnePriceAndCodeOrderSplit[1])
 	if err != nil {
 		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid index values in dealer one")
@@ -484,7 +449,6 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 	// Adjust indices (assuming they start from 1 in the input)
 	dealerOnePriceIndex--
 	dealerOneCodeIndex--
-	dealerOneDescriptionIndex--
 
 	dealerTwoReader := csv.NewReader(dealerTwo)
 	if dealerTwoDelimiter == ";" {
@@ -493,27 +457,20 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 		dealerTwoReader.Comma = ','
 	}
 
-	dealerTwoOrderPriceAndDescriptionSplit := strings.Split(dealerTwoOrderPriceAndDescription, ",")
-	if len(dealerTwoOrderPriceAndDescriptionSplit) != 3 {
+	dealerTwoPriceAndCodeOrderSplit := strings.Split(dealerTwoPriceAndCodeOrder, ",")
+	if len(dealerTwoPriceAndCodeOrderSplit) != 3 {
 		http.Error(w, "Invalid order values", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid dealer one values")
 		return
 	}
-	dealerTwoPriceIndex, err := strconv.Atoi(dealerTwoOrderPriceAndDescriptionSplit[0])
+	dealerTwoPriceIndex, err := strconv.Atoi(dealerTwoPriceAndCodeOrderSplit[0])
 	if err != nil {
 		http.Error(w, "Invalid index values in dealer one", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid index values in dealer one")
 		return
 	}
 
-	dealerTwoCodeIndex, err := strconv.Atoi(dealerTwoOrderPriceAndDescriptionSplit[1])
-	if err != nil {
-		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
-		h.logger.Error().Err(err).Msg("Invalid index values in dealer one")
-		return
-	}
-
-	dealerTwoDescriptionIndex, err := strconv.Atoi(dealerTwoOrderPriceAndDescriptionSplit[2])
+	dealerTwoCodeIndex, err := strconv.Atoi(dealerTwoPriceAndCodeOrderSplit[1])
 	if err != nil {
 		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid index values in dealer one")
@@ -522,16 +479,15 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 
 	dealerTwoPriceIndex--
 	dealerTwoCodeIndex--
-	dealerTwoDescriptionIndex--
 
-	d1, err := h.service.ReadFile(ctx, dealerOne, rune(dealerOneDelimiter[0]), dealerOnePriceIndex, dealerOneCodeIndex, dealerColumn, dealerOneDescriptionIndex)
+	d1, err := h.service.ReadFile(ctx, dealerOne, rune(dealerOneDelimiter[0]), dealerOnePriceIndex, dealerOneCodeIndex, dealerColumn)
 	if err != nil {
 		http.Error(w, "Could not read dealer one file", http.StatusInternalServerError)
 		h.logger.Error().Err(err).Msg("Could not read dealer one file")
 		return
 	}
 
-	d2, err := h.service.ReadFileToMap(ctx, dealerTwo, rune(dealerTwoDelimiter[0]), dealerTwoPriceIndex, dealerTwoCodeIndex, dealerTwoDescriptionIndex)
+	d2, err := h.service.ReadFileToMap(ctx, dealerTwo, rune(dealerTwoDelimiter[0]), dealerTwoPriceIndex, dealerTwoCodeIndex)
 	if err != nil {
 		http.Error(w, "Could not read dealer two file", http.StatusInternalServerError)
 		h.logger.Error().Err(err).Msg("Could not read dealer two file")
