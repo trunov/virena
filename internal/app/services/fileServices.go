@@ -106,7 +106,7 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 	if withAdditionalData == "" {
 		results = [][]string{{"Code", "Best Price", "Dealer Number"}}
 	} else {
-		results = [][]string{{"Code", "Best Price", "Dealer Number", "Worst Price", "Price Ratio"}}
+		results = [][]string{{"Code", "Best Price", "Dealer Number", "Worst Price", "Worst Dealer Number", "Price Ratio"}}
 	}
 
 	processedCodes := make(map[string]struct{})
@@ -117,6 +117,7 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 		var dealerNum string
 
 		var worstPrice float64
+		var worstDealerNum string
 
 		if dealerColumn > 0 {
 			dealerNum = d1.Dealer
@@ -150,6 +151,7 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 					priceDifference := ((bestPrice - d2.Price) / bestPrice) * 100
 
 					// should we change dealer number or not ? probably should remain it
+					// should think of what should be in here for worstDealerNum
 					if priceDifference <= float64(offsetPercentage) {
 						worstPrice = bestPrice
 					} else {
@@ -162,9 +164,13 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 					worstPrice = bestPrice
 					bestPrice = d2.Price
 
+					// either 1 or if dealer number from csv
+					worstDealerNum = dealerNum
+
 					dealerNum = util.GetDealerNum(dealerNumber)
 				}
 			} else {
+				worstDealerNum = util.GetDealerNum(dealerNumber)
 				worstPrice = d2.Price
 			}
 
@@ -177,14 +183,14 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 				pr := fmt.Sprintf("%.0f%%", priceRatio)
 				wp := fmt.Sprintf("%.2f", worstPrice)
 
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, wp, pr})
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, wp, worstDealerNum, pr})
 			}
 		} else {
 			// Code not found in dealerTwoMap, append with N/A values
 			if withAdditionalData == "" {
 				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum})
 			} else {
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, "N/A", "N/A"})
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, "N/A", "N/A", "N/A"})
 			}
 		}
 	}
@@ -202,7 +208,7 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 		if withAdditionalData == "" {
 			results = append(results, []string{code, fmt.Sprintf("%.2f", d2.Price), dealerNum})
 		} else {
-			results = append(results, []string{code, fmt.Sprintf("%.2f", d2.Price), dealerNum, "N/A", "N/A"})
+			results = append(results, []string{code, fmt.Sprintf("%.2f", d2.Price), dealerNum, "N/A", "N/A", "N/A"})
 		}
 	}
 
