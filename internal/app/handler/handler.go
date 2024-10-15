@@ -210,7 +210,7 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 	priceAndCodeOrderSplit := strings.Split(priceAndCodeOrder, ",")
 	// trim for priceAndCodeOrder
 	productOrderIndex, err := strconv.Atoi(productOrder)
-	if err != nil || len(priceAndCodeOrderSplit) != 3 {
+	if err != nil || len(priceAndCodeOrderSplit) != 2 {
 		http.Error(w, "Invalid order values", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid order values")
 		return
