@@ -458,7 +458,7 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 	}
 
 	dealerTwoPriceAndCodeOrderSplit := strings.Split(dealerTwoPriceAndCodeOrder, ",")
-	if len(dealerTwoPriceAndCodeOrderSplit) != 3 {
+	if len(dealerTwoPriceAndCodeOrderSplit) != 2 {
 		http.Error(w, "Invalid order values", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid dealer one values")
 		return
