@@ -22,10 +22,12 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type PriceDealerInfo struct {
-	Price       string
-	Dealer      string
-	Description string
+type CodeInfo struct {
+	Price             string
+	Dealer            string
+	WorstPrice        string
+	WorstDealerNumber string
+	PriceRatio        string
 }
 
 type Handler struct {
@@ -163,6 +165,7 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	withAdditionalData := r.FormValue("withAdditionalData")
 	priceDelimiter := r.FormValue("priceDelimiter")
 	priceAndCodeOrder := r.FormValue("priceAndCodeOrder")
 	productDelimiter := r.FormValue("productDelimiter")
@@ -242,19 +245,22 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 	productOrderIndex--
 
 	// Creating a map for prices
-	pricesMap := make(map[string]PriceDealerInfo)
+	pricesMap := make(map[string]CodeInfo)
 	for {
 		record, err := priceReader.Read()
 		if err == io.EOF {
 			break
 		}
+
 		if err != nil {
 			http.Error(w, "Error reading the price file", http.StatusInternalServerError)
 			h.logger.Error().Err(err).Msg("Error reading the price file")
 			return
 		}
 
-		if len(record) > codeIndex && len(record) > priceIndex {
+		recordLength := len(record)
+
+		if recordLength > codeIndex && recordLength > priceIndex {
 			partCode := record[codeIndex]
 			partPrice := record[priceIndex]
 
@@ -263,8 +269,17 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 				dealerInfo = record[dealerColumn]
 			}
 
-			// should add worst dealer number column and worst price column number
-			pricesMap[partCode] = PriceDealerInfo{Price: partPrice, Dealer: dealerInfo}
+			if withAdditionalData == "" {
+				pricesMap[partCode] = CodeInfo{Price: partPrice, Dealer: dealerInfo}
+			} else {
+				pricesMap[partCode] = CodeInfo{
+					Price:             partPrice,
+					Dealer:            dealerInfo,
+					WorstPrice:        record[recordLength-3],
+					WorstDealerNumber: record[recordLength-2],
+					PriceRatio:        record[recordLength-1],
+				}
+			}
 		}
 	}
 
@@ -292,6 +307,10 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 
 			if dealerColumn >= 0 {
 				record = append(record, "dealer")
+			}
+
+			if withAdditionalData != "" {
+				record = append(record, "Worst Price", "Worst Dealer Number", "Price Ratio")
 			}
 
 			productRecords[i] = record
@@ -339,6 +358,10 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 		if dealerColumn >= 0 {
 			dealerInfo := info.Dealer
 			record = append(record, dealerInfo)
+		}
+
+		if withAdditionalData != "" {
+			record = append(record, info.WorstPrice, info.WorstDealerNumber, info.PriceRatio)
 		}
 
 		productRecords[i] = record
