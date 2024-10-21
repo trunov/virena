@@ -14,9 +14,11 @@ import (
 )
 
 type Dealer struct {
-	Code   string
-	Price  float64
-	Dealer string
+	Code              string
+	Price             float64
+	Dealer            string
+	WorstPrice        string
+	WorstDealerNumber string
 }
 
 type FileService interface {
@@ -56,7 +58,15 @@ func (s *fileServiceImpl) ReadFile(ctx context.Context, file multipart.File, del
 			continue
 		}
 
-		if dealerColumn > 0 && dealerColumn < len(record) {
+		if len(record) >= 6 {
+			dealers = append(dealers, Dealer{
+				Code:              record[codeIndex],
+				Price:             parsePrice(record[priceIndex]),
+				Dealer:            record[dealerColumn],
+				WorstPrice:        record[len(record)-3],
+				WorstDealerNumber: record[len(record)-2],
+			})
+		} else if dealerColumn > 0 && dealerColumn < len(record) {
 			dealers = append(dealers, Dealer{
 				Code:   record[codeIndex],
 				Price:  parsePrice(record[priceIndex]),
@@ -170,8 +180,22 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 					dealerNum = util.GetDealerNum(dealerNumber)
 				}
 			} else {
-				worstDealerNum = util.GetDealerNum(dealerNumber)
-				worstPrice = d2.Price
+				if d2.Price > worstPrice {
+					// Update worst price only if it's better (lower) than the current worst price
+					if d1.WorstPrice != "" && d1.WorstPrice != "N/A" && d1.WorstDealerNumber != "" && d1.WorstDealerNumber != "N/A" {
+						var err error
+						worstPrice, err = strconv.ParseFloat(d1.WorstPrice, 64)
+						if err != nil {
+							worstPrice = 0
+						}
+
+						worstDealerNum = d1.WorstDealerNumber
+					} else {
+						// If the new price is worse than the best price but better than the current worst, update
+						worstDealerNum = util.GetDealerNum(dealerNumber)
+						worstPrice = d2.Price
+					}
+				}
 			}
 
 			processedCodes[code] = struct{}{}
