@@ -24,7 +24,7 @@ type Dealer struct {
 type FileService interface {
 	ReadFile(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, dealerColumn int) ([]Dealer, error)
 	ReadFileToMap(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex int) (map[string]Dealer, error)
-	CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwo map[string]Dealer, dealerColumn, dealerNumber, offsetPercentage int, withAdditionalData string) ([][]string, error)
+	CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwo map[string]Dealer, dealerColumn, dealerNumber, offsetPercentage int) ([][]string, error)
 }
 
 type fileServiceImpl struct{}
@@ -110,14 +110,8 @@ func (s *fileServiceImpl) ReadFileToMap(ctx context.Context, file multipart.File
 	return dealersMap, nil
 }
 
-func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwoMap map[string]Dealer, dealerColumn, dealerNumber, offsetPercentage int, withAdditionalData string) ([][]string, error) {
-	var results [][]string
-
-	if withAdditionalData == "" {
-		results = [][]string{{"Code", "Best Price", "Dealer Number"}}
-	} else {
-		results = [][]string{{"Code", "Best Price", "Dealer Number", "Worst Price", "Worst Dealer Number", "Price Ratio"}}
-	}
+func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwoMap map[string]Dealer, dealerColumn, dealerNumber, offsetPercentage int) ([][]string, error) {
+	results := [][]string{{"Code", "Best Price", "Dealer Number", "Worst Price", "Worst Dealer Number", "Price Ratio"}}
 
 	processedCodes := make(map[string]struct{})
 
@@ -147,21 +141,11 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 			}
 		}
 
-		// func GetDealerNumМ(dealerNumber int) string {
-		// 	if dealerNumber > 0 {
-		// 		return strconv.Itoa(dealerNumber)
-		// 	}
-		// 	return "2"
-		// }
-
 		if found {
-			// 1,647,26 < 1458,14
 			if d2.Price < bestPrice {
 				if offsetPercentage > 0 {
 					priceDifference := ((bestPrice - d2.Price) / bestPrice) * 100
 
-					// should we change dealer number or not ? probably should remain it
-					// should think of what should be in here for worstDealerNum
 					if priceDifference <= float64(offsetPercentage) {
 						worstPrice = bestPrice
 					} else {
@@ -200,22 +184,15 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 
 			processedCodes[code] = struct{}{}
 
-			if withAdditionalData == "" {
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum})
-			} else {
-				priceRatio := ((worstPrice - bestPrice) / bestPrice) * 100
-				pr := fmt.Sprintf("%.0f%%", priceRatio)
-				wp := fmt.Sprintf("%.2f", worstPrice)
+			priceRatio := ((worstPrice - bestPrice) / bestPrice) * 100
+			pr := fmt.Sprintf("%.0f%%", priceRatio)
+			wp := fmt.Sprintf("%.2f", worstPrice)
 
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, wp, worstDealerNum, pr})
-			}
+			results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, wp, worstDealerNum, pr})
+
 		} else {
 			// Code not found in dealerTwoMap, append with N/A values
-			if withAdditionalData == "" {
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum})
-			} else {
-				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, "N/A", "N/A", "N/A"})
-			}
+			results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, "N/A", "N/A", "N/A"})
 		}
 	}
 
@@ -229,11 +206,7 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 			dealerNum = strconv.Itoa(dealerNumber)
 		}
 
-		if withAdditionalData == "" {
-			results = append(results, []string{code, fmt.Sprintf("%.2f", d2.Price), dealerNum})
-		} else {
-			results = append(results, []string{code, fmt.Sprintf("%.2f", d2.Price), dealerNum, "N/A", "N/A", "N/A"})
-		}
+		results = append(results, []string{code, fmt.Sprintf("%.2f", d2.Price), dealerNum, "N/A", "N/A", "N/A"})
 	}
 
 	return results, nil

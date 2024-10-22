@@ -402,8 +402,6 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 	dealerColumn := -1
 	var dealerNumber, offsetPercentage int
 
-	withAdditionalData := r.FormValue("withAdditionalData")
-
 	if offsetPercentageStr != "" {
 		var err error
 		offsetPercentage, err = strconv.Atoi(offsetPercentageStr)
@@ -517,7 +515,7 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	res, err := h.service.CompareAndProcessFiles(ctx, d1, d2, dealerColumn, dealerNumber, offsetPercentage, withAdditionalData)
+	res, err := h.service.CompareAndProcessFiles(ctx, d1, d2, dealerColumn, dealerNumber, offsetPercentage)
 	if err != nil {
 		http.Error(w, "Failed during comparison of dealers", http.StatusInternalServerError)
 		h.logger.Error().Err(err).Msg("Failed during comparison of dealers")
