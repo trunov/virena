@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/trunov/virena/internal/app/postgres"
 	sg "github.com/trunov/virena/internal/app/sendgrid"
@@ -557,6 +558,8 @@ func NewRouter(h *Handler) chi.Router {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of the major browsers
 	}))
+
+	r.Handle("/metrics", promhttp.Handler())
 
 	r.Get("/ping", h.PingDB)
 	r.Route("/api", func(r chi.Router) {

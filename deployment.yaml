@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: virena-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: virena
+  template:
+    metadata:
+      labels:
+        app: virena
+    spec:
+      containers:
+      - name: virena
+        image: docker.io/ktrunov/virena-golang:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: virena-config
+              key: PORT
+        - name: DATABASE_URI
+          valueFrom:
+            secretKeyRef:
+              name: virena-secrets
+              key: DATABASE_URI
+        - name: SENDGRID_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: virena-secrets
+              key: SENDGRID_API_KEY
+        resources:
+          requests:
+            memory: "1Gi"         
+            cpu: "2000m"          
+          limits:
+            memory: "2Gi"         
+            cpu: "4000m"          

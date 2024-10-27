@@ -165,18 +165,19 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 				}
 			} else {
 				var worstDealerFileFromFile float64
-
-				if d1.WorstPrice != "" && d1.WorstPrice != "N/A" {
-					var err error
-					worstDealerFileFromFile, err = strconv.ParseFloat(d1.WorstPrice, 64)
-					if err != nil {
+				worstPriceIsInDealer := d1.WorstPrice != "" && d1.WorstPrice != "N/A"
+				if worstPriceIsInDealer {
+					worstDealerFileFromFile = parsePrice(d1.WorstPrice)
+					// case when error occurs
+					if worstDealerFileFromFile == 0 {
 						worstDealerFileFromFile = d1.Price
 					}
 				}
 
 				// Update worst price only if it's better (lower) than the current worst price
-				if d2.Price > worstDealerFileFromFile {
+				if d2.Price > worstDealerFileFromFile && worstPriceIsInDealer {
 					worstDealerNum = d1.WorstDealerNumber
+					worstPrice = worstDealerFileFromFile
 				} else {
 					// If the new price is worse than the best price but better than the current worst, update
 					worstDealerNum = util.GetDealerNum(dealerNumber)
@@ -190,9 +191,6 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 			pr := fmt.Sprintf("%.0f%%", priceRatio)
 			wp := fmt.Sprintf("%.2f", worstPrice)
 
-			if code == "51139881847" {
-				fmt.Println([]string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, wp, worstDealerNum, pr})
-			}
 			results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, wp, worstDealerNum, pr})
 
 		} else {
