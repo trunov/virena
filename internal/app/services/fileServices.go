@@ -111,7 +111,7 @@ func (s *fileServiceImpl) ReadFileToMap(ctx context.Context, file multipart.File
 }
 
 func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwoMap map[string]Dealer, dealerColumn, dealerNumber, offsetPercentage int) ([][]string, error) {
-	results := [][]string{{"Code", "Best Price", "Dealer Number", "Worst Price", "Worst Dealer Number", "Price Ratio"}}
+	results := [][]string{{"Code", "First Price", "Dealer Number", "Second Price", "Second Dealer Number", "Price Ratio"}}
 
 	processedCodes := make(map[string]struct{})
 
@@ -188,7 +188,7 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 			processedCodes[code] = struct{}{}
 
 			priceRatio := ((worstPrice - bestPrice) / bestPrice) * 100
-			pr := fmt.Sprintf("%.0f%%", priceRatio)
+			pr := fmt.Sprintf("%.2f%%", priceRatio)
 			wp := fmt.Sprintf("%.2f", worstPrice)
 
 			results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, wp, worstDealerNum, pr})

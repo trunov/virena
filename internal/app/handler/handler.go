@@ -559,7 +559,7 @@ func NewRouter(h *Handler) chi.Router {
 		MaxAge:           300, // Maximum value not ignored by any of the major browsers
 	}))
 
-	r.Handle("/metrics", promhttp.Handler())
+	r.Handle("/virena-metrics", promhttp.Handler())
 
 	r.Get("/ping", h.PingDB)
 	r.Route("/api", func(r chi.Router) {
