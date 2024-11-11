@@ -62,7 +62,7 @@ func (s *fileServiceImpl) ReadFile(ctx context.Context, file multipart.File, del
 		if len(record) >= 6 {
 			dealers = append(dealers, Dealer{
 				Code:              record[codeIndex],
-				Price:             parsePrice(record[priceIndex], false),
+				Price:             parsePrice(record[priceIndex]),
 				Dealer:            record[dealerColumn],
 				WorstPrice:        record[len(record)-3],
 				WorstDealerNumber: record[len(record)-2],
@@ -71,13 +71,13 @@ func (s *fileServiceImpl) ReadFile(ctx context.Context, file multipart.File, del
 		} else if dealerColumn > 0 && dealerColumn < len(record) {
 			dealers = append(dealers, Dealer{
 				Code:   record[codeIndex],
-				Price:  parsePrice(record[priceIndex], false),
+				Price:  parsePrice(record[priceIndex]),
 				Dealer: record[dealerColumn],
 			})
 		} else {
 			dealers = append(dealers, Dealer{
 				Code:  record[codeIndex],
-				Price: parsePrice(record[priceIndex], false),
+				Price: parsePrice(record[priceIndex]),
 			})
 		}
 	}
@@ -103,7 +103,7 @@ func (s *fileServiceImpl) ReadFileToMap(ctx context.Context, file multipart.File
 
 		dealer := Dealer{
 			Code:  record[codeIndex],
-			Price: parsePrice(record[priceIndex], false),
+			Price: parsePrice(record[priceIndex]),
 		}
 
 		dealersMap[dealer.Code] = dealer
@@ -169,7 +169,7 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 				var worstDealerPriceFromFile float64
 				worstPriceIsInDealer := d1.WorstPrice != "" && d1.WorstPrice != "N/A"
 				if worstPriceIsInDealer {
-					worstDealerPriceFromFile = parsePrice(d1.WorstPrice, true)
+					worstDealerPriceFromFile = parsePrice(d1.WorstPrice)
 					// case when error occurs
 					if worstDealerPriceFromFile == 0 {
 						worstDealerPriceFromFile = d1.Price
@@ -220,14 +220,10 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 	return results, nil
 }
 
-func parsePrice(priceStr string, dotIsUsed bool) float64 {
+func parsePrice(priceStr string) float64 {
 	priceStr = strings.Replace(priceStr, "\u00A0", "", -1) // Remove non-breaking spaces
 	priceStr = strings.TrimSpace(priceStr)                 // Trim any leading or trailing whitespace
 	priceStr = strings.Replace(priceStr, " ", "", -1)      // Remove regular spaces
-
-	if !dotIsUsed {
-		priceStr = strings.Replace(priceStr, ".", "", -1)
-	}
 
 	commaCount := strings.Count(priceStr, ",")
 	if commaCount > 1 {
