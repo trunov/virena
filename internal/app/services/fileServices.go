@@ -19,6 +19,7 @@ type Dealer struct {
 	Dealer            string
 	WorstPrice        string
 	WorstDealerNumber string
+	PriceRatio        string
 }
 
 type FileService interface {
@@ -61,21 +62,22 @@ func (s *fileServiceImpl) ReadFile(ctx context.Context, file multipart.File, del
 		if len(record) >= 6 {
 			dealers = append(dealers, Dealer{
 				Code:              record[codeIndex],
-				Price:             parsePrice(record[priceIndex]),
+				Price:             parsePrice(record[priceIndex], false),
 				Dealer:            record[dealerColumn],
 				WorstPrice:        record[len(record)-3],
 				WorstDealerNumber: record[len(record)-2],
+				PriceRatio:        record[len(record)-1],
 			})
 		} else if dealerColumn > 0 && dealerColumn < len(record) {
 			dealers = append(dealers, Dealer{
 				Code:   record[codeIndex],
-				Price:  parsePrice(record[priceIndex]),
+				Price:  parsePrice(record[priceIndex], false),
 				Dealer: record[dealerColumn],
 			})
 		} else {
 			dealers = append(dealers, Dealer{
 				Code:  record[codeIndex],
-				Price: parsePrice(record[priceIndex]),
+				Price: parsePrice(record[priceIndex], false),
 			})
 		}
 	}
@@ -101,7 +103,7 @@ func (s *fileServiceImpl) ReadFileToMap(ctx context.Context, file multipart.File
 
 		dealer := Dealer{
 			Code:  record[codeIndex],
-			Price: parsePrice(record[priceIndex]),
+			Price: parsePrice(record[priceIndex], false),
 		}
 
 		dealersMap[dealer.Code] = dealer
@@ -164,20 +166,20 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 					dealerNum = util.GetDealerNum(dealerNumber)
 				}
 			} else {
-				var worstDealerFileFromFile float64
+				var worstDealerPriceFromFile float64
 				worstPriceIsInDealer := d1.WorstPrice != "" && d1.WorstPrice != "N/A"
 				if worstPriceIsInDealer {
-					worstDealerFileFromFile = parsePrice(d1.WorstPrice)
+					worstDealerPriceFromFile = parsePrice(d1.WorstPrice, true)
 					// case when error occurs
-					if worstDealerFileFromFile == 0 {
-						worstDealerFileFromFile = d1.Price
+					if worstDealerPriceFromFile == 0 {
+						worstDealerPriceFromFile = d1.Price
 					}
 				}
 
 				// Update worst price only if it's better (lower) than the current worst price
-				if d2.Price > worstDealerFileFromFile && worstPriceIsInDealer {
+				if d2.Price > worstDealerPriceFromFile && worstPriceIsInDealer {
 					worstDealerNum = d1.WorstDealerNumber
-					worstPrice = worstDealerFileFromFile
+					worstPrice = worstDealerPriceFromFile
 				} else {
 					// If the new price is worse than the best price but better than the current worst, update
 					worstDealerNum = util.GetDealerNum(dealerNumber)
@@ -192,10 +194,13 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 			wp := fmt.Sprintf("%.2f", worstPrice)
 
 			results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, wp, worstDealerNum, pr})
-
 		} else {
 			// Code not found in dealerTwoMap, append with N/A values
-			results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, "N/A", "N/A", "N/A"})
+			if d1.WorstPrice == "" {
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, "N/A", "N/A", "N/A"})
+			} else {
+				results = append(results, []string{code, fmt.Sprintf("%.2f", bestPrice), dealerNum, d1.WorstPrice, d1.WorstDealerNumber, d1.PriceRatio})
+			}
 		}
 	}
 
@@ -215,10 +220,14 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 	return results, nil
 }
 
-func parsePrice(priceStr string) float64 {
+func parsePrice(priceStr string, dotIsUsed bool) float64 {
 	priceStr = strings.Replace(priceStr, "\u00A0", "", -1) // Remove non-breaking spaces
 	priceStr = strings.TrimSpace(priceStr)                 // Trim any leading or trailing whitespace
 	priceStr = strings.Replace(priceStr, " ", "", -1)      // Remove regular spaces
+
+	if !dotIsUsed {
+		priceStr = strings.Replace(priceStr, ".", "", -1)
+	}
 
 	commaCount := strings.Count(priceStr, ",")
 	if commaCount > 1 {
