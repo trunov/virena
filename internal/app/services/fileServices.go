@@ -113,7 +113,7 @@ func (s *fileServiceImpl) ReadFileToMap(ctx context.Context, file multipart.File
 }
 
 func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwoMap map[string]Dealer, dealerColumn, dealerNumber, offsetPercentage int) ([][]string, error) {
-	results := [][]string{{"Code", "First Price", "Dealer Number", "Second Price", "Second Dealer Number", "Price Ratio"}}
+	results := [][]string{{"Code", "Best Price", "Dealer Number", "Second Price", "Second Dealer Number", "Price Ratio"}}
 
 	processedCodes := make(map[string]struct{})
 
@@ -206,6 +206,21 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 
 	for code, d2 := range dealerTwoMap {
 		if _, found := processedCodes[code]; found {
+			continue
+		}
+
+		var found bool
+		if len(code) > 1 {
+			if code[0] == '0' {
+				unprefixedCode := code[1:]
+				_, found = processedCodes[unprefixedCode]
+			} else {
+				prefixedCode := "0" + code
+				_, found = processedCodes[prefixedCode]
+			}
+		}
+
+		if found {
 			continue
 		}
 
