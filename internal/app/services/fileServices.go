@@ -25,7 +25,7 @@ type Dealer struct {
 type FileService interface {
 	ReadFile(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, dealerColumn int) ([]Dealer, error)
 	ReadFileToMap(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex int) (map[string]Dealer, error)
-	CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwo map[string]Dealer, dealerColumn, dealerNumber, offsetPercentage int) ([][]string, error)
+	CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwo map[string]Dealer, dealerColumn, secondDealerNumber, offsetPercentage int, firstDealerNumber string) ([][]string, error)
 }
 
 type fileServiceImpl struct{}
@@ -112,7 +112,7 @@ func (s *fileServiceImpl) ReadFileToMap(ctx context.Context, file multipart.File
 	return dealersMap, nil
 }
 
-func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwoMap map[string]Dealer, dealerColumn, dealerNumber, offsetPercentage int) ([][]string, error) {
+func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwoMap map[string]Dealer, dealerColumn, secondDealerNumber, offsetPercentage int, firstDealerNumber string) ([][]string, error) {
 	results := [][]string{{"Code", "Best Price", "Dealer Number", "Second Price", "Second Dealer Number", "Price Ratio"}}
 
 	processedCodes := make(map[string]struct{})
@@ -128,7 +128,7 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 		if dealerColumn > 0 {
 			dealerNum = d1.Dealer
 		} else {
-			dealerNum = "1"
+			dealerNum = firstDealerNumber
 		}
 
 		d2, found := dealerTwoMap[code]
@@ -154,7 +154,7 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 						worstPrice = bestPrice
 						bestPrice = d2.Price
 
-						dealerNum = util.GetDealerNum(dealerNumber)
+						dealerNum = util.GetDealerNum(secondDealerNumber)
 					}
 				} else {
 					worstPrice = bestPrice
@@ -163,7 +163,7 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 					// either 1 or if dealer number from csv
 					worstDealerNum = dealerNum
 
-					dealerNum = util.GetDealerNum(dealerNumber)
+					dealerNum = util.GetDealerNum(secondDealerNumber)
 				}
 			} else {
 				var worstDealerPriceFromFile float64
@@ -182,7 +182,7 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 					worstPrice = worstDealerPriceFromFile
 				} else {
 					// If the new price is worse than the best price but better than the current worst, update
-					worstDealerNum = util.GetDealerNum(dealerNumber)
+					worstDealerNum = util.GetDealerNum(secondDealerNumber)
 					worstPrice = d2.Price
 				}
 			}
@@ -225,8 +225,8 @@ func (s *fileServiceImpl) CompareAndProcessFiles(ctx context.Context, dealerOne 
 		}
 
 		dealerNum := "2"
-		if dealerNumber > 0 {
-			dealerNum = strconv.Itoa(dealerNumber)
+		if secondDealerNumber > 0 {
+			dealerNum = strconv.Itoa(secondDealerNumber)
 		}
 
 		results = append(results, []string{code, fmt.Sprintf("%.2f", d2.Price), dealerNum, "N/A", "N/A", "N/A"})
