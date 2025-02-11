@@ -396,12 +396,14 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 	dealerTwoPriceAndCodeOrder := r.FormValue("dealerTwoPriceAndCodeOrder")
 
 	dealerColumnStr := r.FormValue("dealerColumn")
-	dealerNumberStr := r.FormValue("dealerNumber")
+	secondDealerNumberStr := r.FormValue("secondDealerNumber")
 
 	offsetPercentageStr := r.FormValue("offsetPercentage")
 
+	firstDealerNumber := r.FormValue("firstDealerNumber")
+
 	dealerColumn := -1
-	var dealerNumber, offsetPercentage int
+	var secondDealerNumber, offsetPercentage int
 
 	if offsetPercentageStr != "" {
 		var err error
@@ -423,7 +425,7 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 		}
 		dealerColumn-- // Adjust for 0-indexing
 
-		dealerNumber, err = strconv.Atoi(dealerNumberStr)
+		secondDealerNumber, err = strconv.Atoi(secondDealerNumberStr)
 		if err != nil {
 			http.Error(w, "Invalid dealer number value", http.StatusBadRequest)
 			h.logger.Error().Err(err).Msg("Invalid dealer number value")
@@ -516,7 +518,7 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	res, err := h.service.CompareAndProcessFiles(ctx, d1, d2, dealerColumn, dealerNumber, offsetPercentage)
+	res, err := h.service.CompareAndProcessFiles(ctx, d1, d2, dealerColumn, secondDealerNumber, offsetPercentage, firstDealerNumber)
 	if err != nil {
 		http.Error(w, "Failed during comparison of dealers", http.StatusInternalServerError)
 		h.logger.Error().Err(err).Msg("Failed during comparison of dealers")
