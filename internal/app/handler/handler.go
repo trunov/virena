@@ -536,6 +536,114 @@ func (h *Handler) ProcessDealerCSVFiles(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+func (h *Handler) AttachExtraField(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseMultipartForm(128 << 20)
+	if err != nil {
+		http.Error(w, "Error parsing form data", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error parsing form data. File size is larger than 128MB.")
+		return
+	}
+
+	dealerOneDelimiter := rune(r.FormValue("dealerOneDelimiter")[0])
+	firstDealerCodeOrderStr := r.FormValue("firstDealerCodeOrder")
+	firstDealerCodeOrder, err := strconv.Atoi(firstDealerCodeOrderStr)
+	if err != nil || firstDealerCodeOrder <= 0 {
+		http.Error(w, "Invalid value for firstDealerCodeOrder", http.StatusBadRequest)
+		h.logger.Error().Msgf("Invalid value for firstDealerCodeOrder: %s", firstDealerCodeOrderStr)
+		return
+	}
+
+	dealerTwoDelimiter := rune(r.FormValue("dealerTwoDelimiter")[0])
+	secondDealerCodeOrderStr := r.FormValue("secondDealerCodeOrder")
+	secondDealerCodeOrder, err := strconv.Atoi(secondDealerCodeOrderStr)
+	if err != nil || secondDealerCodeOrder <= 0 {
+		http.Error(w, "Invalid value for secondDealerCodeOrder", http.StatusBadRequest)
+		h.logger.Error().Msgf("Invalid value for secondDealerCodeOrder: %s", secondDealerCodeOrderStr)
+		return
+	}
+
+	dealerOne, _, err := r.FormFile("dealerOne")
+	if err != nil {
+		http.Error(w, "Error retrieving the dealerOne file", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error retrieving the dealerOne file")
+		return
+	}
+	defer dealerOne.Close()
+
+	dealerTwo, _, err := r.FormFile("dealerTwo")
+	if err != nil {
+		http.Error(w, "Error retrieving the dealerTwo file", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error retrieving the dealerTwo file")
+		return
+	}
+	defer dealerTwo.Close()
+
+	extraField := r.FormValue("extraField")
+	extraFieldIndex, err := strconv.Atoi(extraField)
+	if err != nil || extraFieldIndex <= 0 {
+		http.Error(w, "Invalid value for extraField", http.StatusBadRequest)
+		h.logger.Error().Msgf("Invalid value for extraField: %s", extraField)
+		return
+	}
+
+	dealerOneReader := csv.NewReader(dealerOne)
+	dealerOneReader.Comma = dealerOneDelimiter
+
+	dealerTwoReader := csv.NewReader(dealerTwo)
+	dealerTwoReader.Comma = dealerTwoDelimiter
+
+	dealerTwoData := make(map[string]string)
+	for {
+		record, err := dealerTwoReader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			http.Error(w, "Error reading dealerTwo file", http.StatusInternalServerError)
+			h.logger.Error().Err(err).Msg("Error reading dealerTwo file")
+			return
+		}
+		if len(record) > secondDealerCodeOrder-1 && len(record) > extraFieldIndex-1 {
+			dealerTwoData[record[secondDealerCodeOrder-1]] = record[extraFieldIndex-1]
+		}
+	}
+
+	var result strings.Builder
+	writer := csv.NewWriter(&result)
+	writer.Comma = dealerOneDelimiter
+
+	for {
+		record, err := dealerOneReader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			http.Error(w, "Error processing dealerOne file", http.StatusInternalServerError)
+			h.logger.Error().Err(err).Msg("Error processing dealerOne file")
+			return
+		}
+
+		if len(record) > firstDealerCodeOrder-1 {
+			code := record[firstDealerCodeOrder-1]
+			if extraValue, exists := dealerTwoData[code]; exists {
+				record = append(record, extraValue)
+			} else {
+				record = append(record, "")
+			}
+		}
+		writer.Write(record)
+	}
+	writer.Flush()
+
+	w.Header().Set("Content-Disposition", "attachment; filename=updated_dealer_one.csv")
+	w.Header().Set("Content-Type", "text/csv")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write([]byte(result.String()))
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Error writing response")
+	}
+}
+
 func (h *Handler) PingDB(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
@@ -570,6 +678,7 @@ func NewRouter(h *Handler) chi.Router {
 		r.Post("/contact", h.SendCustomerMessage)
 		r.Post("/handle-price-csv", h.ProcessPriceCSVFiles)
 		r.Post("/handle-dealer-csv", h.ProcessDealerCSVFiles)
+		r.Post("/attach-extra-column", h.AttachExtraField)
 	})
 
 	return r
