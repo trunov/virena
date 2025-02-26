@@ -586,15 +586,15 @@ func (h *Handler) AttachExtraField(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dealerOneReader := csv.NewReader(dealerOne)
-	dealerOneReader.Comma = dealerOneDelimiter
-
 	dealerTwoReader := csv.NewReader(dealerTwo)
 	dealerTwoReader.Comma = dealerTwoDelimiter
 
-	dealerTwoData := make(map[string]string)
+	dealerOneReader := csv.NewReader(dealerOne)
+	dealerOneReader.Comma = dealerOneDelimiter
+
+	dealerOneData := make(map[string]string)
 	for {
-		record, err := dealerTwoReader.Read()
+		record, err := dealerOneReader.Read()
 		if err == io.EOF {
 			break
 		}
@@ -604,7 +604,7 @@ func (h *Handler) AttachExtraField(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if len(record) > secondDealerCodeOrder-1 && len(record) > extraFieldIndex-1 {
-			dealerTwoData[record[secondDealerCodeOrder-1]] = record[extraFieldIndex-1]
+			dealerOneData[record[firstDealerCodeOrder-1]] = record[extraFieldIndex-1]
 		}
 	}
 
@@ -613,7 +613,7 @@ func (h *Handler) AttachExtraField(w http.ResponseWriter, r *http.Request) {
 	writer.Comma = dealerOneDelimiter
 
 	for {
-		record, err := dealerOneReader.Read()
+		record, err := dealerTwoReader.Read()
 		if err == io.EOF {
 			break
 		}
@@ -623,9 +623,9 @@ func (h *Handler) AttachExtraField(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if len(record) > firstDealerCodeOrder-1 {
-			code := record[firstDealerCodeOrder-1]
-			if extraValue, exists := dealerTwoData[code]; exists {
+		if len(record) > secondDealerCodeOrder-1 {
+			code := record[secondDealerCodeOrder-1]
+			if extraValue, exists := dealerOneData[code]; exists {
 				record = append(record, extraValue)
 			} else {
 				record = append(record, "")
