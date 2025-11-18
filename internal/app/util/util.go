@@ -3,6 +3,7 @@ package util
 import (
 	"math/rand"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -39,4 +40,8 @@ func GetDealerNum(dealerNumber int) string {
 		return strconv.Itoa(dealerNumber)
 	}
 	return "2"
+}
+
+func IsTooLarge(err error) bool {
+	return strings.Contains(err.Error(), "http: request body too large")
 }

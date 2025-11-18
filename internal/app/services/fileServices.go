@@ -26,6 +26,7 @@ type FileService interface {
 	ReadFile(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex, dealerColumn int) ([]Dealer, error)
 	ReadFileToMap(ctx context.Context, file multipart.File, delimiter rune, priceIndex, codeIndex int) (map[string]Dealer, error)
 	CompareAndProcessFiles(ctx context.Context, dealerOne []Dealer, dealerTwo map[string]Dealer, dealerColumn, secondDealerNumber, offsetPercentage int, firstDealerNumber string) ([][]string, error)
+	NormalizeFile(ctx context.Context, file multipart.File, delimiter rune, columnIndex int, addPrefix, normalizePlaceCondition string) ([][]string, error)
 }
 
 type fileServiceImpl struct{}
@@ -251,4 +252,55 @@ func parsePrice(priceStr string) float64 {
 		return 0
 	}
 	return price
+}
+
+func (s *fileServiceImpl) NormalizeFile(
+	ctx context.Context,
+	file multipart.File,
+	delimiter rune,
+	columnIndex int,
+	addPrefix string,
+	normalizePlaceCondition string,
+) ([][]string, error) {
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	reader := csv.NewReader(bytes.NewReader(content))
+	reader.Comma = delimiter
+
+	records, err := reader.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 1; i < len(records); i++ { // skip header
+		row := records[i]
+		if columnIndex < 0 || columnIndex >= len(row) {
+			continue
+		}
+
+		code := strings.Trim(row[columnIndex], `"`)
+		if code == "" {
+			continue
+		}
+
+		if shouldNormalize(code, normalizePlaceCondition) {
+			code = addPrefix + code
+			row[columnIndex] = code
+			records[i] = row
+		}
+	}
+
+	return records, nil
+}
+
+func shouldNormalize(code, normalizePlaceCondition string) bool {
+	if code == "" || normalizePlaceCondition == "" {
+		return false
+	}
+
+	first := code[0]
+	return strings.ContainsRune(normalizePlaceCondition, rune(first))
 }

@@ -151,8 +151,14 @@ func (h *Handler) SendCustomerMessage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 128<<20)
+
 	err := r.ParseMultipartForm(128 << 20)
 	if err != nil {
+		if util.IsTooLarge(err) {
+			http.Error(w, "payload too large (max 128 MB)", http.StatusRequestEntityTooLarge)
+			return
+		}
 		http.Error(w, "Error parsing form data", http.StatusInternalServerError)
 		h.logger.Error().Err(err).Msg("Error parsing form data. File size is larger than 128MB.")
 		return
@@ -644,6 +650,86 @@ func (h *Handler) AttachExtraField(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handler) Normalize(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 128<<20)
+
+	if err := r.ParseMultipartForm(128 << 20); err != nil {
+		if util.IsTooLarge(err) {
+			http.Error(w, "payload too large (max 128 MB)", http.StatusRequestEntityTooLarge)
+			return
+		}
+		http.Error(w, "Error parsing form data", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error parsing form data. File size is larger than 128MB.")
+		return
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			errMsg := fmt.Sprintf("Panic occurred: %v", r)
+			h.logger.Error().Msg(errMsg)
+			http.Error(w, errMsg, http.StatusInternalServerError)
+		}
+	}()
+
+	normalizePlaceCondition := r.FormValue("normalizePlaceCondition")
+	normalizeAddValue := r.FormValue("normalizeAddValue")
+	normalizeColumn := r.FormValue("productOrder")
+
+	delimiter := r.FormValue("priceDelimiter")
+
+	if normalizePlaceCondition == "" || normalizeAddValue == "" || normalizeColumn == "" {
+		http.Error(w, "normalizePlaceCondition, normalizeAddValue and normalizeColumn are required", http.StatusBadRequest)
+		return
+	}
+
+	columnIndex, err := strconv.Atoi(normalizeColumn)
+	if err != nil {
+		http.Error(w, "normalizeColumn must be an integer", http.StatusBadRequest)
+		return
+	}
+
+	// since starting with 0
+	columnIndex--
+
+	normalizeFile, _, err := r.FormFile("fileForNormalize")
+	if err != nil {
+		http.Error(w, "Error retrieving the file", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error retrieving the file")
+		return
+	}
+	defer normalizeFile.Close()
+
+	var d rune
+	if delimiter == ";" {
+		d = ';'
+	} else {
+		d = ','
+	}
+
+	records, err := h.service.NormalizeFile(
+		r.Context(),
+		normalizeFile,
+		d,
+		columnIndex,
+		normalizeAddValue,
+		normalizePlaceCondition,
+	)
+	if err != nil {
+		http.Error(w, "Error normalizing file", http.StatusInternalServerError)
+		h.logger.Error().Err(err).Msg("Error normalizing file")
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", `attachment; filename="normalized.csv"`)
+
+	writer := csv.NewWriter(w)
+	writer.Comma = d
+	if err := writer.WriteAll(records); err != nil {
+		h.logger.Error().Err(err).Msg("Error writing CSV response")
+	}
+}
+
 func (h *Handler) PingDB(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
@@ -679,6 +765,7 @@ func NewRouter(h *Handler) chi.Router {
 		r.Post("/handle-price-csv", h.ProcessPriceCSVFiles)
 		r.Post("/handle-dealer-csv", h.ProcessDealerCSVFiles)
 		r.Post("/attach-extra-column", h.AttachExtraField)
+		r.Post("/normalize", h.Normalize)
 	})
 
 	return r

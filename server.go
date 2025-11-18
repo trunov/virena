@@ -10,7 +10,7 @@ import (
 	"github.com/trunov/virena/logger"
 )
 
-func StartServer(cfg config.Config, dbStorage postgres.DBStorager) {
+func StartServer(cfg config.Config, dbStorage postgres.DBStorager) *http.Server {
 	l := logger.Get()
 
 	s := services.NewFileService()
@@ -18,10 +18,10 @@ func StartServer(cfg config.Config, dbStorage postgres.DBStorager) {
 	h := handler.NewHandler(dbStorage, s, l, cfg.SendgridAPIKey)
 	r := handler.NewRouter(h)
 
-	l.Info().
-		Msgf("Starting the Virena app server on PORT '%s'", cfg.Port)
+	srv := &http.Server{
+		Addr:    ":" + cfg.Port,
+		Handler: r,
+	}
 
-	l.Fatal().
-		Err(http.ListenAndServe(":"+cfg.Port, r)).
-		Msg("Virena App Server Closed")
+	return srv
 }
