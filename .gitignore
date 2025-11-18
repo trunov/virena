@@ -21,3 +21,6 @@
 go.work
 
 *.log
+
+# files for profiling
+/profiles

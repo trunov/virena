@@ -151,8 +151,14 @@ func (h *Handler) SendCustomerMessage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseMultipartForm(128 << 20)
+	r.Body = http.MaxBytesReader(w, r.Body, 128<<20)
+
+	err := r.ParseMultipartForm(1 << 20)
 	if err != nil {
+		if util.IsTooLarge(err) {
+			http.Error(w, "payload too large (max 128 MB)", http.StatusRequestEntityTooLarge)
+			return
+		}
 		http.Error(w, "Error parsing form data", http.StatusInternalServerError)
 		h.logger.Error().Err(err).Msg("Error parsing form data. File size is larger than 128MB.")
 		return
@@ -657,6 +663,10 @@ func (h *Handler) PingDB(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (h *Handler) Normalize(w http.ResponseWriter, r *http.Request) {
+
+}
+
 func NewRouter(h *Handler) chi.Router {
 	r := chi.NewRouter()
 
@@ -679,6 +689,7 @@ func NewRouter(h *Handler) chi.Router {
 		r.Post("/handle-price-csv", h.ProcessPriceCSVFiles)
 		r.Post("/handle-dealer-csv", h.ProcessDealerCSVFiles)
 		r.Post("/attach-extra-column", h.AttachExtraField)
+		r.Post("/normalize", h.Normalize)
 	})
 
 	return r
