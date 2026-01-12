@@ -584,11 +584,29 @@ func (h *Handler) AttachExtraField(w http.ResponseWriter, r *http.Request) {
 	}
 	defer dealerTwo.Close()
 
-	extraField := r.FormValue("extraField")
-	extraFieldIndex, err := strconv.Atoi(extraField)
-	if err != nil || extraFieldIndex <= 0 {
-		http.Error(w, "Invalid value for extraField", http.StatusBadRequest)
-		h.logger.Error().Msgf("Invalid value for extraField: %s", extraField)
+	extraFields := r.FormValue("extraFields")
+	extraFieldsStrArr := strings.Split(extraFields, ",")
+	extraFieldsArr := make([]int, 0, len(extraFieldsStrArr))
+
+	for _, f := range extraFieldsStrArr {
+		f = strings.TrimSpace(f)
+		if f == "" {
+			continue
+		}
+
+		n, err := strconv.Atoi(f)
+		if err == nil {
+			extraFieldsArr = append(extraFieldsArr, n)
+		} else {
+			h.logger.Warn().Err(err).Msgf("Invalid extraFields entry: %q", f)
+		}
+	}
+
+	extraColNames := make([]string, len(extraFieldsArr))
+
+	if len(extraFieldsArr) == 0 {
+		h.logger.Error().Err(err).Msg("Invalid value for extraField")
+		http.Error(w, "Invalid value for extraFields", http.StatusBadRequest)
 		return
 	}
 
@@ -598,7 +616,9 @@ func (h *Handler) AttachExtraField(w http.ResponseWriter, r *http.Request) {
 	dealerOneReader := csv.NewReader(dealerOne)
 	dealerOneReader.Comma = dealerOneDelimiter
 
-	dealerOneData := make(map[string]string)
+	dealerOneData := make(map[string][]string)
+	isDealerOneFirstRow := true
+
 	for {
 		record, err := dealerOneReader.Read()
 		if err == io.EOF {
@@ -609,14 +629,36 @@ func (h *Handler) AttachExtraField(w http.ResponseWriter, r *http.Request) {
 			h.logger.Error().Err(err).Msg("Error reading dealerTwo file")
 			return
 		}
-		if len(record) > secondDealerCodeOrder-1 && len(record) > extraFieldIndex-1 {
-			dealerOneData[record[firstDealerCodeOrder-1]] = record[extraFieldIndex-1]
+
+		if isDealerOneFirstRow {
+			for i, index := range extraFieldsArr {
+				if index >= 0 && index < len(record) {
+					extraColNames[i] = record[index]
+				}
+			}
+			isDealerOneFirstRow = false
 		}
+
+		// check for the code column to be presented
+		if len(record) <= firstDealerCodeOrder-1 {
+			continue
+		}
+
+		code := record[firstDealerCodeOrder-1]
+		values := make([]string, len(extraFieldsArr))
+		for i, idx := range extraFieldsArr {
+			if len(record) > idx-1 {
+				values[i] = record[idx-1]
+			}
+		}
+		dealerOneData[code] = values
 	}
 
 	var result strings.Builder
 	writer := csv.NewWriter(&result)
 	writer.Comma = dealerOneDelimiter
+
+	isDealerTwoFirstRow := true
 
 	for {
 		record, err := dealerTwoReader.Read()
@@ -629,15 +671,33 @@ func (h *Handler) AttachExtraField(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if isDealerTwoFirstRow {
+			record = append(record, extraColNames...)
+			isDealerTwoFirstRow = false
+
+			if err := writer.Write(record); err != nil {
+				http.Error(w, "Error writing output CSV header", http.StatusInternalServerError)
+				h.logger.Error().Err(err).Msg("Error writing output CSV header")
+				return
+			}
+			continue
+		}
+
+		extras := make([]string, len(extraFieldsArr))
 		if len(record) > secondDealerCodeOrder-1 {
 			code := record[secondDealerCodeOrder-1]
-			if extraValue, exists := dealerOneData[code]; exists {
-				record = append(record, extraValue)
-			} else {
-				record = append(record, "")
+			if v, exists := dealerOneData[code]; exists {
+				extras = v
 			}
 		}
-		writer.Write(record)
+
+		record = append(record, extras...)
+
+		if err := writer.Write(record); err != nil {
+			http.Error(w, "Error writing output CSV", http.StatusInternalServerError)
+			h.logger.Error().Err(err).Msg("Error writing output CSV")
+			return
+		}
 	}
 	writer.Flush()
 
