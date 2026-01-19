@@ -632,8 +632,9 @@ func (h *Handler) AttachExtraField(w http.ResponseWriter, r *http.Request) {
 
 		if isDealerOneFirstRow {
 			for i, index := range extraFieldsArr {
-				if index >= 0 && index < len(record) {
-					extraColNames[i] = record[index]
+				idx := index - 1
+				if idx >= 0 && idx < len(record) {
+					extraColNames[i] = record[idx]
 				}
 			}
 			isDealerOneFirstRow = false
@@ -646,9 +647,11 @@ func (h *Handler) AttachExtraField(w http.ResponseWriter, r *http.Request) {
 
 		code := record[firstDealerCodeOrder-1]
 		values := make([]string, len(extraFieldsArr))
-		for i, idx := range extraFieldsArr {
-			if len(record) > idx-1 {
-				values[i] = record[idx-1]
+		for i, index := range extraFieldsArr {
+			idx := index - 1
+
+			if idx >= 0 && idx < len(record) {
+				values[i] = record[idx]
 			}
 		}
 		dealerOneData[code] = values
