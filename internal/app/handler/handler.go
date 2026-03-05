@@ -26,6 +26,7 @@ import (
 type CodeInfo struct {
 	Price             string
 	Dealer            string
+	Stock             string
 	WorstPrice        string
 	WorstDealerNumber string
 	PriceRatio        string
@@ -174,7 +175,7 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 
 	withAdditionalData := r.FormValue("withAdditionalData")
 	priceDelimiter := r.FormValue("priceDelimiter")
-	priceAndCodeOrder := r.FormValue("priceAndCodeOrder")
+	priceCodeStockOrder := r.FormValue("priceCodeStockOrder")
 	productDelimiter := r.FormValue("productDelimiter")
 	productOrder := r.FormValue("productOrder")
 	percentage := r.FormValue("percentage")
@@ -217,26 +218,37 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 	}
 	priceReader.FieldsPerRecord = -1
 
-	priceAndCodeOrderSplit := strings.Split(priceAndCodeOrder, ",")
+	priceCodeStockOrderSplit := strings.Split(priceCodeStockOrder, ",")
 	// trim for priceAndCodeOrder
 	productOrderIndex, err := strconv.Atoi(productOrder)
-	if err != nil || len(priceAndCodeOrderSplit) != 2 {
+	if err != nil || len(priceCodeStockOrderSplit) < 2 {
 		http.Error(w, "Invalid order values", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid order values")
 		return
 	}
-	priceIndex, err := strconv.Atoi(priceAndCodeOrderSplit[0])
+	priceIndex, err := strconv.Atoi(priceCodeStockOrderSplit[0])
 	if err != nil {
 		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid index values in order")
 		return
 	}
 
-	codeIndex, err := strconv.Atoi(priceAndCodeOrderSplit[1])
+	codeIndex, err := strconv.Atoi(priceCodeStockOrderSplit[1])
 	if err != nil {
 		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid index values in order")
 		return
+	}
+
+	stockColumn := -1
+	if len(priceCodeStockOrderSplit) == 3 {
+		stockIndex, err := strconv.Atoi(priceCodeStockOrderSplit[2])
+		if err != nil {
+			http.Error(w, "Invalid index values in stock", http.StatusBadRequest)
+			h.logger.Error().Err(err).Msg("Invalid index values in order")
+			return
+		}
+		stockColumn = stockIndex - 1
 	}
 
 	percentageNum, err := strconv.ParseFloat(percentage, 64)
@@ -276,8 +288,14 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 				dealerInfo = record[dealerColumn]
 			}
 
+			var stockInfo string
+			if stockColumn >= 0 && len(record) > stockColumn {
+				stockInfo = record[stockColumn]
+			}
+
+			// no stock if additional data needed
 			if withAdditionalData == "" {
-				pricesMap[partCode] = CodeInfo{Price: partPrice, Dealer: dealerInfo}
+				pricesMap[partCode] = CodeInfo{Price: partPrice, Dealer: dealerInfo, Stock: stockInfo}
 			} else {
 				pricesMap[partCode] = CodeInfo{
 					Price:             partPrice,
@@ -306,7 +324,7 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 
 	for i, record := range productRecords {
 		if i == 0 {
-			if priceIndex == len(record)-1 {
+			if priceIndex >= len(record) {
 				record = append(record, "new price")
 			} else {
 				record = append(record[:priceIndex+1], append([]string{"new price"}, record[priceIndex+1:]...)...)
@@ -314,6 +332,10 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 
 			if dealerColumn >= 0 {
 				record = append(record, "dealer")
+			}
+
+			if stockColumn >= 0 && withAdditionalData == "" {
+				record = append(record, "stock")
 			}
 
 			if withAdditionalData != "" {
@@ -356,7 +378,7 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 			newPriceStr = "N/A"
 		}
 
-		if priceIndex == len(record)-1 {
+		if withAdditionalData == "" {
 			record = append(record, newPriceStr)
 		} else {
 			record = append(record[:priceIndex+1], append([]string{newPriceStr}, record[priceIndex+1:]...)...)
@@ -365,6 +387,11 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 		if dealerColumn >= 0 {
 			dealerInfo := info.Dealer
 			record = append(record, dealerInfo)
+		}
+
+		if stockColumn >= 0 && withAdditionalData == "" {
+			stockInfo := info.Stock
+			record = append(record, stockInfo)
 		}
 
 		if withAdditionalData != "" {
