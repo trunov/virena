@@ -226,14 +226,15 @@ func (h *Handler) ProcessPriceCSVFiles(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error().Err(err).Msg("Invalid order values")
 		return
 	}
-	priceIndex, err := strconv.Atoi(priceCodeStockOrderSplit[0])
+
+	codeIndex, err := strconv.Atoi(priceCodeStockOrderSplit[0])
 	if err != nil {
 		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid index values in order")
 		return
 	}
 
-	codeIndex, err := strconv.Atoi(priceCodeStockOrderSplit[1])
+	priceIndex, err := strconv.Atoi(priceCodeStockOrderSplit[1])
 	if err != nil {
 		http.Error(w, "Invalid index values in order", http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("Invalid index values in order")
